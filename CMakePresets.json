@@ -10,6 +10,11 @@
             "name": "x64_linux",
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build/${presetName}"
+        },
+        {
+            "name": "macOS",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/${presetName}"
         }
     ]
 }
