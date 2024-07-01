@@ -14,6 +14,10 @@ FetchContent_Declare(JUCE
         )
 FetchContent_MakeAvailable(JUCE)
 
+set(LEAP_SDK_DIR ${CMAKE_SOURCE_DIR}/dependencies/LeapSDK)
+set(LeapSDK_DIR ${LEAP_SDK_DIR}/lib/cmake/LeapSDK)
+find_package(LeapSDK 5 REQUIRED)
+
 juce_add_plugin(AudioPluginExample
     VERSION 0.0.1                               # Set this if the plugin version is different to the project version
     # ICON_BIG ...                              # ICON_* arguments specify a path to an image file to use as an icon for the Standalone
