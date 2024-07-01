@@ -18,7 +18,7 @@ set(LEAP_SDK_DIR ${CMAKE_SOURCE_DIR}/dependencies/LeapSDK)
 set(LeapSDK_DIR ${LEAP_SDK_DIR}/lib/cmake/LeapSDK)
 find_package(LeapSDK 5 REQUIRED)
 
-add_subdirectory(tracker)
+add_subdirectory(LeapWrapper)
 
 juce_add_plugin(AudioPluginExample
     VERSION 0.0.1                               # Set this if the plugin version is different to the project version
