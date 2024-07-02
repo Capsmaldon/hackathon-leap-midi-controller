@@ -95,7 +95,7 @@ void AudioPluginAudioProcessor::prepareToPlay(double sampleRate, int samplesPerB
         }
     }
 
-    //synth.noteOn(1, 48, uint8_t(127));
+    synth.noteOn(1, 48, uint8_t(127));
 }
 
 void AudioPluginAudioProcessor::releaseResources() {
@@ -191,13 +191,13 @@ void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands) {
     const auto processHand = [&](const LEAP_HAND &hand) {
         // TODO: worry about palm offsets later
         const auto palmCCs =
-                hand.type == eLeapHandType_Left ? std::array<int, 3>{60, 61, 62} : std::array<int, 3>{63, 64, 65};
+                hand.type == eLeapHandType_Left ? std::array<int, 3>{34, 35, 36} : std::array<int, 3>{34, 35, 36};
 
         // Get invLerps of palm positions.
         const auto palmPos = std::array<float, 3>{
-                invLerp(-20.f, 20.f, hand.palm.position.x),
-                invLerp(-20.f, 20.f, hand.palm.position.y),
-                invLerp(-20.f, 20.f, hand.palm.position.z)
+                invLerp(-200.f, 200.f, hand.palm.position.x),
+                invLerp(-200.f, 200.f, hand.palm.position.y),
+                invLerp(-200.f, 200.f, hand.palm.position.z)
         };
 
         for (const auto i: {0, 1, 2}) {

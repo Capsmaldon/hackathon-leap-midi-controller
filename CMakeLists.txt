@@ -15,8 +15,14 @@ FetchContent_Declare(JUCE
 FetchContent_MakeAvailable(JUCE)
 
 set(LEAP_SDK_DIR ${CMAKE_SOURCE_DIR}/dependencies/LeapSDK)
-set(LeapSDK_DIR ${LEAP_SDK_DIR}/lib/cmake/LeapSDK)
-find_package(LeapSDK 5 REQUIRED)
+if(APPLE)
+    add_library(LeapSDK SHARED IMPORTED)
+    set_property(TARGET LeapSDK PROPERTY IMPORTED_LOCATION "${LEAP_SDK_DIR}/lib/macOS/libLeapC.6.dylib")
+    target_include_directories(LeapSDK INTERFACE "${LEAP_SDK_DIR}/include")
+else()
+    set(LeapSDK_DIR ${LEAP_SDK_DIR}/lib/cmake/LeapSDK)
+    find_package(LeapSDK 5 REQUIRED)
+endif ()
 
 add_subdirectory(LeapWrapper)
 
