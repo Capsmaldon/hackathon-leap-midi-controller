@@ -42,6 +42,7 @@ target_sources(
   PRIVATE
     PluginEditor.cpp
     PluginProcessor.cpp
+    HandUI.cpp
 )
 
 target_compile_definitions(AudioPluginExample

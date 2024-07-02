@@ -9,7 +9,10 @@
         {
             "name": "x64_linux",
             "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/build/${presetName}"
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
         },
         {
             "name": "macOS",
