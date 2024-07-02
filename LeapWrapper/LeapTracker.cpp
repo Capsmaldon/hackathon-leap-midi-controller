@@ -2,6 +2,14 @@
 
 LeapTracker::LeapTracker(std::function<void(std::vector<LEAP_HAND>)> handEvents) : callback{std::move(handEvents)}
 {
+    LEAP_CONNECTION_CONFIG config{
+        sizeof(LEAP_CONNECTION_CONFIG),
+        eLeapConnectionConfig_MultiDeviceAware,
+        nullptr, // Leave server namespace as default.
+        eLeapTrackingOrigin::eLeapTrackingOrigin_DeviceCenter,
+    };
+
+    LeapCreateConnection(&config, &connectionHandle);
     LeapOpenConnection(connectionHandle);
 
     // Start the service thread.
