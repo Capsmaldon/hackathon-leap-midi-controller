@@ -1,8 +1,6 @@
 #include "LeapTracker.h"
 
-#include <algorithm>
-
-LeapTracker::LeapTracker()
+LeapTracker::LeapTracker(std::function<void(std::vector<LEAP_HAND>)> handEvents) : callback{std::move(handEvents)}
 {
     LeapOpenConnection(connectionHandle);
 
@@ -32,22 +30,6 @@ LeapTracker::~LeapTracker()
     }
 
     LeapDestroyConnection(connectionHandle);
-}
-
-HandFrame LeapTracker::GetLatestFrame(eLeapHandType chirality)
-{
-    std::shared_lock lock{framesMutex};
-
-    const auto search = std::find_if(std::rbegin(frames), std::rend(frames), [&](const HandFrame& frame){
-        return FrameHasHand(frame, chirality);
-    });
-
-    if (search != std::rend(frames))
-    {
-        return *search;
-    }
-
-    return HandFrame{};
 }
 
 void LeapTracker::ServiceMessageLoop()
@@ -106,38 +88,9 @@ void LeapTracker::DeviceLost(uint32_t _, const LEAP_DEVICE_EVENT* event)
 
 void LeapTracker::TrackingFrame(uint32_t deviceId, const LEAP_TRACKING_EVENT* event)
 {
-    if (deviceId != this->deviceId)
-    {
-        return;
-    }
-
-    HandFrame frame{};
-    frame.header = *event;
-    frame.header.pHands = frame.hands.data();
-
-    frame.hands.resize(frame.header.nHands);
-    std::copy_n(event->pHands, event->nHands, frame.header.pHands);
-
-    {
-        std::unique_lock lock{framesMutex};
-        frames.push_back(std::move(frame));
-
-        while (frames.size() > kFrameBufferSize)
-        {
-            frames.pop_front();
-        }
-    }
-}
-
-bool LeapTracker::FrameHasHand(const HandFrame& frame, eLeapHandType chirality)
-{
-    for (const auto& hand : frame.hands)
-    {
-        if (hand.type == chirality)
-        {
-            return true;
-        }
-    }
-
-    return false;
+    // Copy out the leap hands from the event and fire them off through the callback given on construction.
+    std::vector<LEAP_HAND> hands;
+    hands.resize(event->nHands);
+    std::copy_n(event->pHands, event->nHands, hands.data());
+    callback(std::move(hands));
 }
