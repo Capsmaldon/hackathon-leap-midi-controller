@@ -3,6 +3,8 @@
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "LeapWrapper/LeapTracker.h"
+#include <juce_dsp/juce_dsp.h>
+#include <juce_core/juce_core.h>
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -48,6 +50,8 @@ public:
 
 
 private:
+    juce::Synthesiser synth;
+    juce::dsp::Oscillator<float> osc;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessor)
 

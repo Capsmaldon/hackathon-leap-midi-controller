@@ -25,10 +25,10 @@ juce_add_plugin(AudioPluginExample
     # ICON_BIG ...                              # ICON_* arguments specify a path to an image file to use as an icon for the Standalone
     # ICON_SMALL ...
     # COMPANY_NAME ...                          # Specify the name of the plugin's author
-    # IS_SYNTH TRUE/FALSE                       # Is this a synth or an effect?
+    IS_SYNTH TRUE                       # Is this a synth or an effect?
     # NEEDS_MIDI_INPUT TRUE/FALSE               # Does the plugin need midi input?
     NEEDS_MIDI_OUTPUT TRUE                      # Does the plugin need midi output?
-    IS_MIDI_EFFECT TRUE                 # Is this plugin a MIDI effect?
+    IS_MIDI_EFFECT FALSE                 # Is this plugin a MIDI effect?
     # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE    # Does the editor need keyboard focus?
     # COPY_PLUGIN_AFTER_BUILD TRUE/FALSE        # Should the plugin be installed to a default location after building?
     PLUGIN_MANUFACTURER_CODE Juce               # A four-character manufacturer id with at least one upper-case character
@@ -43,6 +43,9 @@ target_sources(
     PluginEditor.cpp
     PluginProcessor.cpp
     HandUI.cpp
+    TestSynthVoice.cpp
+    TestSynthVoice.h
+    TestSynthSound.h
 )
 
 target_compile_definitions(AudioPluginExample
@@ -57,6 +60,7 @@ target_link_libraries(AudioPluginExample
     PRIVATE
         # AudioPluginData           # If we'd created a binary data target, we'd link to it here
         juce::juce_audio_utils
+        juce::juce_dsp
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
