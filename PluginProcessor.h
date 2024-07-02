@@ -1,6 +1,8 @@
 #pragma once
 
+#include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "LeapWrapper/LeapTracker.h"
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -42,7 +44,17 @@ public:
     void getStateInformation(juce::MemoryBlock &destData) override;
     void setStateInformation(const void *data, int sizeInBytes) override;
 
+    //==============================================================================
+
+
 private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessor)
+
+    //==============================================================================
+    void leapHandEvent(std::vector<LEAP_HAND> hands);
+    LeapTracker leapTracker;
+    std::unique_ptr<juce::MidiOutput> midiOutput;
+
+    //==============================================================================
 };

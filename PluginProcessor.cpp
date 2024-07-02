@@ -11,7 +11,12 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)
 #endif
       )
+     , leapTracker{std::bind(&AudioPluginAudioProcessor::leapHandEvent, this, std::placeholders::_1)}
 {
+#if !JUCE_WINDOWS
+    midiOutput = juce::MidiOutput::createNewDevice("Leap Note Tickler");
+#endif
+
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -177,6 +182,42 @@ void AudioPluginAudioProcessor::setStateInformation(const void *data, int sizeIn
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
     juce::ignoreUnused(data, sizeInBytes);
+}
+
+//==============================================================================
+void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands)
+{
+    const auto invLerp = [](float lower, float upper, float value)
+    {
+        return (value - lower) / (upper - lower);
+    };
+
+    const auto processHand = [&](const LEAP_HAND& hand)
+    {
+        // TODO: worry about palm offsets later
+        const auto palmCCs = hand.type == eLeapHandType_Left ? std::array<int, 3>{60, 61, 62} : std::array<int, 3>{63, 64, 65};
+
+        // Get invLerps of palm positions.
+        const auto palmPos = std::array<float, 3>{
+            invLerp(-20.f, 20.f, hand.palm.position.x),
+            invLerp(-20.f, 20.f, hand.palm.position.y),
+            invLerp(-20.f, 20.f, hand.palm.position.z)
+        };
+
+        for (const auto i : {0, 1, 2})
+        {
+            auto msg = juce::MidiMessage::controllerEvent(0, palmCCs[i], palmPos[i] * 127);
+            if (midiOutput)
+            {
+                midiOutput->sendMessageNow(msg);
+            }
+        }
+    };
+
+    for (const auto& hand : hands)
+    {
+        processHand(hand);
+    }
 }
 
 //==============================================================================

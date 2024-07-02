@@ -14,6 +14,7 @@ private:
     static constexpr auto kFrameBufferSize = 32;
 
 public:
+    LeapTracker() = delete;
     LeapTracker(std::function<void(std::vector<LEAP_HAND>)> handEvents);
     ~LeapTracker();
 
