@@ -56,6 +56,30 @@ public:
             case PARAM_RIGHT_HAND_Z:
                 right_hand.set_position_z(m.newValue);
                 break;
+            case PARAM_LEFT_HAND_PINKY:
+                left_hand.toggle_note(0, m.newValue);
+                break;
+            case PARAM_LEFT_HAND_RING:
+                left_hand.toggle_note(1, m.newValue);
+                break;
+            case PARAM_LEFT_HAND_MIDDLE:
+                left_hand.toggle_note(2, m.newValue);
+                break;
+            case PARAM_LEFT_HAND_INDEX:
+                left_hand.toggle_note(3, m.newValue);
+                break;
+            case PARAM_RIGHT_HAND_INDEX:
+                right_hand.toggle_note(0, m.newValue);
+                break;
+            case PARAM_RIGHT_HAND_MIDDLE:
+                right_hand.toggle_note(1, m.newValue);
+                break;
+            case PARAM_RIGHT_HAND_RING:
+                right_hand.toggle_note(2, m.newValue);
+                break;
+            case PARAM_RIGHT_HAND_PINKY:
+                right_hand.toggle_note(3, m.newValue);
+                break;
             }
         }
         parameter_change_messages.clear();

@@ -56,6 +56,50 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                                                               0.0f,           // minimum value
                                                               1.0f,           // maximum value
                                                               0.5f));         // default value
+
+    addParameter(left_hand_pinky = new juce::AudioParameterInt("left_hand_pinky", // parameterID
+                                                               "Left Hand Pinky", // parameter name
+                                                               0,
+                                                               1,
+                                                               0)); // default value
+
+    addParameter(left_hand_ring = new juce::AudioParameterInt("left_hand_ring", // parameterID
+                                                              "Left Hand Ring", // parameter name
+                                                              0,
+                                                              1,
+                                                              0));                  // default value
+    addParameter(left_hand_middle = new juce::AudioParameterInt("left_hand_middle", // parameterID
+                                                                "Left Hand Middle", // parameter name
+                                                                0,
+                                                                1,
+                                                                0));              // default value
+    addParameter(left_hand_index = new juce::AudioParameterInt("left_hand_index", // parameterID
+                                                               "Left Hand Index", // parameter name
+                                                               0,
+                                                               1,
+                                                               0)); // default value
+
+    addParameter(right_hand_index = new juce::AudioParameterInt("right_hand_index", // parameterID
+                                                                "Right Hand Index", // parameter name
+                                                                0,
+                                                                1,
+                                                                0)); // default value
+
+    addParameter(right_hand_middle = new juce::AudioParameterInt("right_hand_middle", // parameterID
+                                                                 "Right Hand Middle", // parameter name
+                                                                 0,
+                                                                 1,
+                                                                 0));             // default value
+    addParameter(right_hand_ring = new juce::AudioParameterInt("right_hand_ring", // parameterID
+                                                               "Right Hand Ring", // parameter name
+                                                               0,
+                                                               1,
+                                                               0));                 // default value
+    addParameter(right_hand_pinky = new juce::AudioParameterInt("right_hand_pinky", // parameterID
+                                                                "Right Hand Pinky", // parameter name
+                                                                0,
+                                                                1,
+                                                                0));
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -147,7 +191,7 @@ void AudioPluginAudioProcessor::prepareToPlay(double sampleRate, int samplesPerB
         }
     }
 
-    //synth.noteOn(1, 48, uint8_t(127));
+    // synth.noteOn(1, 48, uint8_t(127));
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -251,13 +295,15 @@ void AudioPluginAudioProcessor::setStateInformation(const void *data, int sizeIn
 }
 
 //==============================================================================
-void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands) {
-    for (const auto &hand: hands) {
+void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands)
+{
+    for (const auto &hand : hands)
+    {
         processHand(hand);
     }
 }
 
-void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
+void AudioPluginAudioProcessor::processHand(const LEAP_HAND &hand)
 {
     // Handle palm X Y and Z.
     const auto palmCCs =
@@ -267,8 +313,7 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
     const auto palmPos = std::array<float, 3>{
         invLerp(-200.f, 200.f, hand.palm.position.x),
         invLerp(-200.f, 200.f, hand.palm.position.y),
-        invLerp(-200.f, 200.f, hand.palm.position.z)
-    };
+        invLerp(-200.f, 200.f, hand.palm.position.z)};
 
     for (const auto i : {0, 1, 2})
     {
@@ -300,7 +345,7 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
     }
 
     // Individual finger pinch calcs
-    const auto PinchStateChanged = [&](bool& state, float value)
+    const auto PinchStateChanged = [&](bool &state, float value)
     {
         auto currentState = state;
 
@@ -318,10 +363,10 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
         return false;
     };
 
-    auto& fingerPinches = hand.type == eLeapHandType_Left ? previousPinches[0] : previousPinches[1];
+    auto &fingerPinches = hand.type == eLeapHandType_Left ? previousPinches[0] : previousPinches[1];
     const auto pinkyChanged = PinchStateChanged(
         fingerPinches.pinky,
-        calculatePinch(hand.thumb.distal.next_joint,hand.pinky.distal.next_joint));
+        calculatePinch(hand.thumb.distal.next_joint, hand.pinky.distal.next_joint));
     const auto ringChanged = PinchStateChanged(
         fingerPinches.ring,
         calculatePinch(hand.thumb.distal.next_joint, hand.ring.distal.next_joint));
@@ -332,7 +377,7 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
         fingerPinches.index,
         calculatePinch(hand.thumb.distal.next_joint, hand.index.distal.next_joint));
 
-    const auto noteEvent = [&](const auto& state, int noteNumber)
+    const auto noteEvent = [&](const auto &state, int noteNumber)
     {
         auto msg = juce::MidiMessage{};
         if (state)
@@ -359,10 +404,12 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
         if (hand.type == eLeapHandType_Left)
         {
             noteEvent(fingerPinches.pinky, 60);
+            left_hand_pinky->setValueNotifyingHost(fingerPinches.pinky ? 1 : 0);
         }
         else
         {
             noteEvent(fingerPinches.pinky, 67);
+            right_hand_pinky->setValueNotifyingHost(fingerPinches.pinky ? 1 : 0);
         }
     }
 
@@ -371,10 +418,12 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
         if (hand.type == eLeapHandType_Left)
         {
             noteEvent(fingerPinches.ring, 61);
+            left_hand_ring->setValueNotifyingHost(fingerPinches.ring ? 1 : 0);
         }
         else
         {
             noteEvent(fingerPinches.ring, 66);
+            right_hand_ring->setValueNotifyingHost(fingerPinches.ring ? 1 : 0);
         }
     }
 
@@ -383,10 +432,12 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
         if (hand.type == eLeapHandType_Left)
         {
             noteEvent(fingerPinches.middle, 62);
+            left_hand_middle->setValueNotifyingHost(fingerPinches.middle ? 1 : 0);
         }
         else
         {
             noteEvent(fingerPinches.middle, 65);
+            right_hand_middle->setValueNotifyingHost(fingerPinches.middle ? 1 : 0);
         }
     }
 
@@ -395,23 +446,25 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
         if (hand.type == eLeapHandType_Left)
         {
             noteEvent(fingerPinches.index, 63);
+            left_hand_index->setValueNotifyingHost(fingerPinches.index ? 1 : 0);
         }
         else
         {
             noteEvent(fingerPinches.index, 64);
+            right_hand_index->setValueNotifyingHost(fingerPinches.index ? 1 : 0);
         }
     }
 }
 
-float AudioPluginAudioProcessor::calculatePinch(const LEAP_VECTOR& thumbTip, const LEAP_VECTOR& fingerTip)
+float AudioPluginAudioProcessor::calculatePinch(const LEAP_VECTOR &thumbTip, const LEAP_VECTOR &fingerTip)
 {
-    const auto vecLength = [](const LEAP_VECTOR& v)
+    const auto vecLength = [](const LEAP_VECTOR &v)
     {
         return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
     };
 
-    static constexpr auto fullPinch = 15.0f; //15mms dist is considered a full pinch.
-    static constexpr auto fullRelease = 100.0f; //100mms dist between fingers is considered a full release
+    static constexpr auto fullPinch = 15.0f;    // 15mms dist is considered a full pinch.
+    static constexpr auto fullRelease = 100.0f; // 100mms dist between fingers is considered a full release
 
     LEAP_VECTOR distVec = {thumbTip.x - fingerTip.x, thumbTip.y - fingerTip.y, thumbTip.z - fingerTip.z};
     return invLerp(fullRelease, fullPinch, vecLength(distVec));

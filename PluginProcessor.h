@@ -14,6 +14,14 @@ enum PluginParams
     PARAM_RIGHT_HAND_X,
     PARAM_RIGHT_HAND_Y,
     PARAM_RIGHT_HAND_Z,
+    PARAM_LEFT_HAND_PINKY,
+    PARAM_LEFT_HAND_RING,
+    PARAM_LEFT_HAND_MIDDLE,
+    PARAM_LEFT_HAND_INDEX,
+    PARAM_RIGHT_HAND_INDEX,
+    PARAM_RIGHT_HAND_MIDDLE,
+    PARAM_RIGHT_HAND_RING,
+    PARAM_RIGHT_HAND_PINKY
 };
 
 //==============================================================================
@@ -76,8 +84,8 @@ private:
     };
 
     void leapHandEvent(std::vector<LEAP_HAND> hands);
-    void processHand(const LEAP_HAND& hand);
-    float calculatePinch(const LEAP_VECTOR& thumbTip, const LEAP_VECTOR& fingerTip);
+    void processHand(const LEAP_HAND &hand);
+    float calculatePinch(const LEAP_VECTOR &thumbTip, const LEAP_VECTOR &fingerTip);
 
     static const auto invLerp(float lower, float upper, float value)
     {
@@ -97,6 +105,16 @@ private:
     juce::AudioParameterFloat *right_hand_x;
     juce::AudioParameterFloat *right_hand_y;
     juce::AudioParameterFloat *right_hand_z;
+
+    juce::AudioParameterInt *left_hand_pinky;
+    juce::AudioParameterInt *left_hand_ring;
+    juce::AudioParameterInt *left_hand_middle;
+    juce::AudioParameterInt *left_hand_index;
+
+    juce::AudioParameterInt *right_hand_pinky;
+    juce::AudioParameterInt *right_hand_ring;
+    juce::AudioParameterInt *right_hand_middle;
+    juce::AudioParameterInt *right_hand_index;
 
     //==============================================================================
 };

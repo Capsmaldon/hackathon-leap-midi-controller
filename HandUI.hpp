@@ -2,6 +2,49 @@
 #include <vector>
 #include <memory>
 
+class NoteTable : public juce::Component
+{
+public:
+    NoteTable()
+    {
+        on_colour = juce::Colour::fromRGB(120, 120, 120);
+        off_colour = juce::Colour::fromRGB(80, 80, 80);
+
+        for (int i = 0; i < 4; ++i)
+        {
+            auto l = std::make_unique<juce::Label>();
+            l->setText(std::to_string(i), juce::NotificationType::dontSendNotification);
+            addAndMakeVisible(*l);
+            l->setBorderSize(juce::BorderSize<int>(2));
+            l->setJustificationType(juce::Justification::centred);
+            l->setColour(juce::Label::outlineColourId, juce::Colour(255, 255, 255));
+            l->setColour(juce::Label::backgroundColourId, off_colour);
+            notes.push_back(std::move(l));
+        }
+    }
+
+    void resized() override
+    {
+        auto area = getLocalBounds();
+        auto box_width = area.getWidth() / notes.size();
+        for (unsigned int i = 0; i < notes.size(); ++i)
+        {
+            auto label_area = area.removeFromLeft(box_width);
+            notes[i]->setBounds(label_area);
+        }
+    }
+
+    void toggle_note(int index, int value)
+    {
+        notes[index]->setColour(juce::Label::backgroundColourId, value == 1 ? on_colour : off_colour);
+    }
+
+private:
+    juce::Colour on_colour;
+    juce::Colour off_colour;
+    std::vector<std::unique_ptr<juce::Label>> notes;
+};
+
 class XYPad : public juce::Component
 {
 public:
@@ -48,22 +91,19 @@ public:
         z_slider.setSliderStyle(juce::Slider::SliderStyle::LinearBarVertical);
         z_slider.setRange(0.0f, 1.0f, 0.0f);
         addAndMakeVisible(z_slider);
+
+        addAndMakeVisible(note_table);
     }
 
     void resized() override
     {
         auto area = getLocalBounds();
-        label.setBoundsRelative(0.0f, 0.0f, 1.0f, 0.1f);
-        area = area.withTrimmedTop(area.getHeight() * 0.1);
-
-        juce::FlexBox fb;
-        fb.justifyContent = juce::FlexBox::JustifyContent::center;
-
-        juce::FlexItem xy(static_cast<float>(area.getWidth()) / 3.0f * 2.0f, static_cast<float>(area.getHeight()), xy_pad);
-        juce::FlexItem z(static_cast<float>(area.getWidth()) / 3.0f, static_cast<float>(area.getHeight()), z_slider);
-
-        fb.items.addArray({xy, z});
-        fb.performLayout(area);
+        auto w = area.getWidth();
+        auto h = area.getHeight();
+        label.setBounds(area.removeFromTop(h * 0.1));
+        note_table.setBounds(area.removeFromBottom(h * 0.25));
+        xy_pad.setBounds(area.removeFromLeft(w * 0.8));
+        z_slider.setBounds(area);
     }
 
     void set_position_x(float x)
@@ -81,8 +121,14 @@ public:
         z_slider.setValue(z);
     }
 
+    void toggle_note(int index, int value)
+    {
+        note_table.toggle_note(index, value);
+    }
+
 private:
     juce::Label label;
     XYPad xy_pad;
     juce::Slider z_slider;
+    NoteTable note_table;
 };
