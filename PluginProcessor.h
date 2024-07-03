@@ -77,6 +77,11 @@ private:
     void processHand(const LEAP_HAND& hand);
     float calculatePinch(const LEAP_VECTOR& thumbTip, const LEAP_VECTOR& fingerTip);
 
+    static const auto invLerp(float lower, float upper, float value)
+    {
+        return (value - lower) / (upper - lower);
+    };
+
     LeapTracker leapTracker;
     std::unique_ptr<juce::MidiOutput> midiOutput;
     std::array<FingerPinches, 2> previousPinches;

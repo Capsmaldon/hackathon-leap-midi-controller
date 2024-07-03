@@ -251,11 +251,6 @@ void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands) {
 
 void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
 {
-    const auto invLerp = [](float lower, float upper, float value)
-    {
-        return (value - lower) / (upper - lower);
-    };
-
     // Handle palm X Y and Z.
     const auto palmCCs =
         hand.type == eLeapHandType_Left ? std::array<int, 3>{60, 61, 62} : std::array<int, 3>{63, 64, 65};
@@ -399,8 +394,11 @@ float AudioPluginAudioProcessor::calculatePinch(const LEAP_VECTOR& thumbTip, con
         return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
     };
 
-    LEAP_VECTOR tipDistance = {thumbTip.x - fingerTip.x, thumbTip.y - fingerTip.y, thumbTip.z - fingerTip.z};
-    return vecLength(tipDistance);
+    static constexpr auto fullPinch = 15.0f; //15mms dist is considered a full pinch.
+    static constexpr auto fullRelease = 100.0f; //100mms dist between fingers is considered a full release
+
+    LEAP_VECTOR distVec = {thumbTip.x - fingerTip.x, thumbTip.y - fingerTip.y, thumbTip.z - fingerTip.z};
+    return invLerp(fullRelease, fullPinch, vecLength(distVec));
 }
 
 //==============================================================================
