@@ -256,8 +256,10 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     }
     else
     {
-        synth.renderNextBlock(buffer, internal_midi_buffer, 0, buffer.getNumSamples());
-        internal_midi_buffer.clear();
+        juce::ScopedLock sl (internalMidiBufferMutex);
+        internalMidiBuffer.addEvents(midiMessages, 0, -1, 0);
+        synth.renderNextBlock(buffer, internalMidiBuffer, 0, buffer.getNumSamples());
+        internalMidiBuffer.clear();
     }
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
@@ -331,7 +333,8 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND &hand)
             }
             else
             {
-                internal_midi_buffer.addEvent(msg, 0);
+                juce::ScopedLock sl (internalMidiBufferMutex);
+                internalMidiBuffer.addEvent(msg, 0);
             }
         }
     }
@@ -401,7 +404,8 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND &hand)
         }
         else
         {
-            internal_midi_buffer.addEvent(msg, 0);
+            juce::ScopedLock sl (internalMidiBufferMutex);
+            internalMidiBuffer.addEvent(msg, 0);
         }
     };
 

@@ -70,7 +70,8 @@ private:
     juce::Synthesiser synth;
     juce::dsp::Oscillator<float> osc;
 
-    juce::MidiBuffer internal_midi_buffer;
+    juce::MidiBuffer internalMidiBuffer;
+    juce::CriticalSection internalMidiBufferMutex;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessor)
 
