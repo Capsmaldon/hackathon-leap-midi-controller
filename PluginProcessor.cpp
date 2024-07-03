@@ -20,6 +20,7 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 
     synth.addSound(new TestSynthSound());
     synth.addVoice(new TestSynthVoice());
+    last_sent_palm_position = std::chrono::steady_clock::now();
 
     addParameter(left_hand_x = new juce::AudioParameterFloat("left_hand_x", // parameterID
                                                              "Left Hand X", // parameter name
@@ -307,26 +308,31 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND &hand)
 {
     // Handle palm X Y and Z.
     const auto palmCCs =
-        hand.type == eLeapHandType_Left ? std::array<int, 3>{60, 61, 62} : std::array<int, 3>{63, 64, 65};
+        hand.type == eLeapHandType_Left ? std::array<int, 3>{34, 35, 36} : std::array<int, 3>{37, 38, 39};
 
     // Get invLerps of palm positions.
     const auto palmPos = std::array<float, 3>{
         invLerp(-200.f, 200.f, hand.palm.position.x),
-        invLerp(-200.f, 200.f, hand.palm.position.y),
+        invLerp(100.f, 300.f, hand.palm.position.y),
         invLerp(-200.f, 200.f, hand.palm.position.z)};
 
-    for (const auto i : {0, 1, 2})
+    auto now = std::chrono::steady_clock::now();
+    if ((now - last_sent_palm_position) > std::chrono::milliseconds(50))
     {
-        int value = palmPos[i] * 127;
-        value = std::clamp(value, 0, 127);
-        auto msg = juce::MidiMessage::controllerEvent(1, palmCCs[i], value);
-        if (midiOutput)
+        last_sent_palm_position = now;
+        for (const auto i : {0, 1, 2})
         {
-            midiOutput->sendMessageNow(msg);
-        }
-        else
-        {
-            internal_midi_buffer.addEvent(msg, 0);
+            int value = palmPos[i] * 127;
+            value = std::clamp(value, 0, 127);
+            auto msg = juce::MidiMessage::controllerEvent(1, palmCCs[i], value);
+            if (midiOutput)
+            {
+                midiOutput->sendMessageNow(msg);
+            }
+            else
+            {
+                internal_midi_buffer.addEvent(msg, 0);
+            }
         }
     }
 
@@ -399,16 +405,18 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND &hand)
         }
     };
 
+    int notes[8]{60, 62, 64, 67, 72, 74, 76, 79};
+
     if (pinkyChanged)
     {
         if (hand.type == eLeapHandType_Left)
         {
-            noteEvent(fingerPinches.pinky, 60);
+            noteEvent(fingerPinches.pinky, notes[0]);
             left_hand_pinky->setValueNotifyingHost(fingerPinches.pinky ? 1 : 0);
         }
         else
         {
-            noteEvent(fingerPinches.pinky, 67);
+            noteEvent(fingerPinches.pinky, notes[7]);
             right_hand_pinky->setValueNotifyingHost(fingerPinches.pinky ? 1 : 0);
         }
     }
@@ -417,12 +425,12 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND &hand)
     {
         if (hand.type == eLeapHandType_Left)
         {
-            noteEvent(fingerPinches.ring, 61);
+            noteEvent(fingerPinches.ring, notes[1]);
             left_hand_ring->setValueNotifyingHost(fingerPinches.ring ? 1 : 0);
         }
         else
         {
-            noteEvent(fingerPinches.ring, 66);
+            noteEvent(fingerPinches.ring, notes[6]);
             right_hand_ring->setValueNotifyingHost(fingerPinches.ring ? 1 : 0);
         }
     }
@@ -431,12 +439,12 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND &hand)
     {
         if (hand.type == eLeapHandType_Left)
         {
-            noteEvent(fingerPinches.middle, 62);
+            noteEvent(fingerPinches.middle, notes[2]);
             left_hand_middle->setValueNotifyingHost(fingerPinches.middle ? 1 : 0);
         }
         else
         {
-            noteEvent(fingerPinches.middle, 65);
+            noteEvent(fingerPinches.middle, notes[5]);
             right_hand_middle->setValueNotifyingHost(fingerPinches.middle ? 1 : 0);
         }
     }
@@ -445,12 +453,12 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND &hand)
     {
         if (hand.type == eLeapHandType_Left)
         {
-            noteEvent(fingerPinches.index, 63);
+            noteEvent(fingerPinches.index, notes[3]);
             left_hand_index->setValueNotifyingHost(fingerPinches.index ? 1 : 0);
         }
         else
         {
-            noteEvent(fingerPinches.index, 64);
+            noteEvent(fingerPinches.index, notes[4]);
             right_hand_index->setValueNotifyingHost(fingerPinches.index ? 1 : 0);
         }
     }
