@@ -147,7 +147,7 @@ void AudioPluginAudioProcessor::prepareToPlay(double sampleRate, int samplesPerB
         }
     }
 
-    synth.noteOn(1, 48, uint8_t(127));
+    //synth.noteOn(1, 48, uint8_t(127));
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -205,7 +205,15 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     // Alternatively, you can process the samples with the channels
     // interleaved by keeping the same state.
     // juce::dsp::AudioBlock<float> synthBlock{buffer};
-    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+    if (midiOutput)
+    {
+        synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+    }
+    else
+    {
+        synth.renderNextBlock(buffer, internal_midi_buffer, 0, buffer.getNumSamples());
+        internal_midi_buffer.clear();
+    }
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
@@ -271,6 +279,10 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
         {
             midiOutput->sendMessageNow(msg);
         }
+        else
+        {
+            internal_midi_buffer.addEvent(msg, 0);
+        }
     }
 
     // Update the UI to show the palm representation.
@@ -335,6 +347,10 @@ void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
         if (midiOutput)
         {
             midiOutput->sendMessageNow(msg);
+        }
+        else
+        {
+            internal_midi_buffer.addEvent(msg, 0);
         }
     };
 
