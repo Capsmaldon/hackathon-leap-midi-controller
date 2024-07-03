@@ -6,6 +6,16 @@
 #include <juce_dsp/juce_dsp.h>
 #include <juce_core/juce_core.h>
 
+enum PluginParams
+{
+    PARAM_LEFT_HAND_X,
+    PARAM_LEFT_HAND_Y,
+    PARAM_LEFT_HAND_Z,
+    PARAM_RIGHT_HAND_X,
+    PARAM_RIGHT_HAND_Y,
+    PARAM_RIGHT_HAND_Z,
+};
+
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
 {
@@ -48,7 +58,6 @@ public:
 
     //==============================================================================
 
-
 private:
     juce::Synthesiser synth;
     juce::dsp::Oscillator<float> osc;
@@ -59,6 +68,14 @@ private:
     void leapHandEvent(std::vector<LEAP_HAND> hands);
     LeapTracker leapTracker;
     std::unique_ptr<juce::MidiOutput> midiOutput;
+
+    juce::AudioParameterFloat *left_hand_x;
+    juce::AudioParameterFloat *left_hand_y;
+    juce::AudioParameterFloat *left_hand_z;
+
+    juce::AudioParameterFloat *right_hand_x;
+    juce::AudioParameterFloat *right_hand_y;
+    juce::AudioParameterFloat *right_hand_z;
 
     //==============================================================================
 };

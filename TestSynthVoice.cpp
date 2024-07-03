@@ -2,39 +2,44 @@
 // Created by Luke Saxton on 02/07/2024.
 //
 
-
 #include "TestSynthVoice.h"
 
-TestSynthVoice::TestSynthVoice() {
-//    osc.initialise([](float x) { return std::sin(x); }
-   osc.initialise([](float x) { return x / juce::MathConstants<float>::pi; });
+TestSynthVoice::TestSynthVoice()
+{
+    //    osc.initialise([](float x) { return std::sin(x); }
+    osc.initialise([](float x)
+                   { return x / juce::MathConstants<float>::pi; });
 }
 
-bool TestSynthVoice::canPlaySound(juce::SynthesiserSound *sound) {
+bool TestSynthVoice::canPlaySound(juce::SynthesiserSound *sound)
+{
     return dynamic_cast<juce::SynthesiserSound *>(sound) != nullptr;
 }
 
 void TestSynthVoice::startNote(int midiNoteNumber,
                                float velocity,
                                juce::SynthesiserSound *sound,
-                               int currentPitchWheelPosition) {
+                               int currentPitchWheelPosition)
+{
     osc.setFrequency(juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber));
     adsr.noteOn();
 }
 
-void TestSynthVoice::stopNote(float velocity, bool allowTailOff) {
+void TestSynthVoice::stopNote(float velocity, bool allowTailOff)
+{
     adsr.noteOff();
 }
 
-void TestSynthVoice::pitchWheelMoved(int newPitchWheelValue) {
-
+void TestSynthVoice::pitchWheelMoved(int newPitchWheelValue)
+{
 }
 
-void TestSynthVoice::controllerMoved(int controllerNumber, int newControllerValue) {
+void TestSynthVoice::controllerMoved(int controllerNumber, int newControllerValue)
+{
     // cutoff
     if (controllerNumber == 34)
     {
-        auto newFc = newControllerValue / 127.0f;
+        auto newFc = (newControllerValue + 1) / 127.0f;
         newFc = newFc * newFc;
         ladder.setCutoffFrequencyHz(newFc * 20000.0f);
     }
@@ -45,15 +50,16 @@ void TestSynthVoice::controllerMoved(int controllerNumber, int newControllerValu
     }
 }
 
-void TestSynthVoice::aftertouchChanged(int newAftertouchValue) {
-
+void TestSynthVoice::aftertouchChanged(int newAftertouchValue)
+{
 }
 
-void TestSynthVoice::channelPressureChanged(int newChannelPressureValue) {
-
+void TestSynthVoice::channelPressureChanged(int newChannelPressureValue)
+{
 }
 
-void TestSynthVoice::prepareToPlay(juce::dsp::ProcessSpec &spec) {
+void TestSynthVoice::prepareToPlay(juce::dsp::ProcessSpec &spec)
+{
     osc.prepare(spec);
     osc.setFrequency(220);
 
@@ -63,7 +69,8 @@ void TestSynthVoice::prepareToPlay(juce::dsp::ProcessSpec &spec) {
 
 void TestSynthVoice::renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
                                      int startSample,
-                                     int numSamples) {
+                                     int numSamples)
+{
     synthBuffer.setSize(outputBuffer.getNumChannels(), numSamples, false, false, true);
     synthBuffer.clear();
 
@@ -74,7 +81,8 @@ void TestSynthVoice::renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
     ladder.process(context);
     adsr.applyEnvelopeToBuffer(synthBuffer, 0, numSamples);
 
-    for (int c = 0; c < outputBuffer.getNumChannels(); c++) {
+    for (int c = 0; c < outputBuffer.getNumChannels(); c++)
+    {
         outputBuffer.addFrom(c, startSample, synthBuffer, c, 0, synthBuffer.getNumSamples());
     }
 }

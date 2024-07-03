@@ -17,9 +17,14 @@ public:
         g.drawRect(getLocalBounds(), 1.0f);
     }
 
-    void set_position(float x, float y)
+    void set_position_x(float x)
     {
         x_ = x;
+        repaint();
+    }
+
+    void set_position_y(float y)
+    {
         y_ = y;
         repaint();
     }
@@ -61,9 +66,18 @@ public:
         fb.performLayout(area);
     }
 
-    void set_position(float x, float y, float z)
+    void set_position_x(float x)
     {
-        xy_pad.set_position(x, y);
+        xy_pad.set_position_x(x);
+    }
+
+    void set_position_y(float y)
+    {
+        xy_pad.set_position_y(y);
+    }
+
+    void set_position_z(float z)
+    {
         z_slider.setValue(z);
     }
 

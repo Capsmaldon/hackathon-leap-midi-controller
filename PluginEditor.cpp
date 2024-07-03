@@ -11,10 +11,19 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(AudioPluginAudi
     setSize(800, 300);
     addAndMakeVisible(left_hand);
     addAndMakeVisible(right_hand);
+
+    for (auto &p : getAudioProcessor()->getParameters())
+    {
+        p->addListener(this);
+    }
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor()
 {
+    for (auto &p : getAudioProcessor()->getParameters())
+    {
+        p->removeListener(this);
+    }
 }
 
 //==============================================================================

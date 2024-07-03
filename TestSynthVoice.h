@@ -8,7 +8,8 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 #include "TestSynthSound.h"
 
-class TestSynthVoice : public juce::SynthesiserVoice {
+class TestSynthVoice : public juce::SynthesiserVoice
+{
 
 public:
     TestSynthVoice();
@@ -30,7 +31,7 @@ public:
 
     void channelPressureChanged(int newChannelPressureValue) override;
 
-    void prepareToPlay(juce::dsp::ProcessSpec& spec);
+    void prepareToPlay(juce::dsp::ProcessSpec &spec);
 
     void renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
                          int startSample,

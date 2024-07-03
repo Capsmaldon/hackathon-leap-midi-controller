@@ -9,12 +9,12 @@
 class TestSynthSound : public juce::SynthesiserSound
 {
 public:
-    bool appliesToNote (int midiNoteNumber) override
+    bool appliesToNote(int midiNoteNumber) override
     {
         return true;
     }
 
-    virtual bool appliesToChannel (int midiChannel) override
+    virtual bool appliesToChannel(int midiChannel) override
     {
         return true;
     }
