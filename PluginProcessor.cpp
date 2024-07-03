@@ -243,54 +243,164 @@ void AudioPluginAudioProcessor::setStateInformation(const void *data, int sizeIn
 }
 
 //==============================================================================
-void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands)
+void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands) {
+    for (const auto &hand: hands) {
+        processHand(hand);
+    }
+}
+
+void AudioPluginAudioProcessor::processHand(const LEAP_HAND& hand)
 {
     const auto invLerp = [](float lower, float upper, float value)
     {
         return (value - lower) / (upper - lower);
     };
 
-    const auto processHand = [&](const LEAP_HAND &hand)
+    // Handle palm X Y and Z.
+    const auto palmCCs =
+        hand.type == eLeapHandType_Left ? std::array<int, 3>{60, 61, 62} : std::array<int, 3>{63, 64, 65};
+
+    // Get invLerps of palm positions.
+    const auto palmPos = std::array<float, 3>{
+        invLerp(-200.f, 200.f, hand.palm.position.x),
+        invLerp(-200.f, 200.f, hand.palm.position.y),
+        invLerp(-200.f, 200.f, hand.palm.position.z)
+    };
+
+    for (const auto i : {0, 1, 2})
     {
-        // TODO: worry about palm offsets later
-        const auto palmCCs =
-            hand.type == eLeapHandType_Left ? std::array<int, 3>{34, 35, 36} : std::array<int, 3>{37, 38, 39};
-
-        // Get invLerps of palm positions.
-        const auto palmPos = std::array<float, 3>{
-            invLerp(-200.f, 200.f, hand.palm.position.x),
-            invLerp(-200.f, 200.f, hand.palm.position.y),
-            invLerp(-200.f, 200.f, hand.palm.position.z)};
-
-        if (hand.type == eLeapHandType_Left)
+        int value = palmPos[i] * 127;
+        value = std::clamp(value, 0, 127);
+        auto msg = juce::MidiMessage::controllerEvent(1, palmCCs[i], value);
+        if (midiOutput)
         {
-            left_hand_x->setValueNotifyingHost(std::clamp(palmPos[0], 0.0f, 1.0f));
-            left_hand_y->setValueNotifyingHost(std::clamp(palmPos[1], 0.0f, 1.0f));
-            left_hand_z->setValueNotifyingHost(std::clamp(palmPos[2], 0.0f, 1.0f));
+            midiOutput->sendMessageNow(msg);
+        }
+    }
+
+    // Update the UI to show the palm representation.
+    if (hand.type == eLeapHandType_Left)
+    {
+        left_hand_x->setValueNotifyingHost(std::clamp(palmPos[0], 0.0f, 1.0f));
+        left_hand_y->setValueNotifyingHost(std::clamp(palmPos[1], 0.0f, 1.0f));
+        left_hand_z->setValueNotifyingHost(std::clamp(palmPos[2], 0.0f, 1.0f));
+    }
+    else
+    {
+        right_hand_x->setValueNotifyingHost(std::clamp(palmPos[0], 0.0f, 1.0f));
+        right_hand_y->setValueNotifyingHost(std::clamp(palmPos[1], 0.0f, 1.0f));
+        right_hand_z->setValueNotifyingHost(std::clamp(palmPos[2], 0.0f, 1.0f));
+    }
+
+    // Individual finger pinch calcs
+    const auto PinchStateChanged = [&](bool& state, float value)
+    {
+        auto currentState = state;
+
+        if (!currentState && value > triggerThreshold)
+        {
+            state = true;
+            return true;
+        }
+        else if (currentState && value < releaseThreshold)
+        {
+            state = false;
+            return true;
+        }
+
+        return false;
+    };
+
+    auto& fingerPinches = hand.type == eLeapHandType_Left ? previousPinches[0] : previousPinches[1];
+    const auto pinkyChanged = PinchStateChanged(
+        fingerPinches.pinky,
+        calculatePinch(hand.thumb.distal.next_joint,hand.pinky.distal.next_joint));
+    const auto ringChanged = PinchStateChanged(
+        fingerPinches.ring,
+        calculatePinch(hand.thumb.distal.next_joint, hand.ring.distal.next_joint));
+    const auto middleChanged = PinchStateChanged(
+        fingerPinches.middle,
+        calculatePinch(hand.thumb.distal.next_joint, hand.middle.distal.next_joint));
+    const auto indexChanged = PinchStateChanged(
+        fingerPinches.index,
+        calculatePinch(hand.thumb.distal.next_joint, hand.index.distal.next_joint));
+
+    const auto noteEvent = [&](const auto& state, int noteNumber)
+    {
+        auto msg = juce::MidiMessage{};
+        if (state)
+        {
+            msg = juce::MidiMessage::noteOn(1, noteNumber, 1.0f);
         }
         else
         {
-            right_hand_x->setValueNotifyingHost(std::clamp(palmPos[0], 0.0f, 1.0f));
-            right_hand_y->setValueNotifyingHost(std::clamp(palmPos[1], 0.0f, 1.0f));
-            right_hand_z->setValueNotifyingHost(std::clamp(palmPos[2], 0.0f, 1.0f));
+            msg = juce::MidiMessage::noteOff(1, noteNumber, 1.0f);
         }
 
-        for (const auto i : {0, 1, 2})
+        if (midiOutput)
         {
-            int value = palmPos[i] * 127;
-            value = std::clamp(value, 0, 127);
-            auto msg = juce::MidiMessage::controllerEvent(1, palmCCs[i], value);
-            if (midiOutput)
-            {
-                midiOutput->sendMessageNow(msg);
-            }
+            midiOutput->sendMessageNow(msg);
         }
     };
 
-    for (const auto &hand : hands)
+    if (pinkyChanged)
     {
-        processHand(hand);
+        if (hand.type == eLeapHandType_Left)
+        {
+            noteEvent(fingerPinches.pinky, 60);
+        }
+        else
+        {
+            noteEvent(fingerPinches.pinky, 67);
+        }
     }
+
+    if (ringChanged)
+    {
+        if (hand.type == eLeapHandType_Left)
+        {
+            noteEvent(fingerPinches.ring, 61);
+        }
+        else
+        {
+            noteEvent(fingerPinches.ring, 66);
+        }
+    }
+
+    if (middleChanged)
+    {
+        if (hand.type == eLeapHandType_Left)
+        {
+            noteEvent(fingerPinches.middle, 62);
+        }
+        else
+        {
+            noteEvent(fingerPinches.middle, 65);
+        }
+    }
+
+    if (indexChanged)
+    {
+        if (hand.type == eLeapHandType_Left)
+        {
+            noteEvent(fingerPinches.index, 63);
+        }
+        else
+        {
+            noteEvent(fingerPinches.index, 64);
+        }
+    }
+}
+
+float AudioPluginAudioProcessor::calculatePinch(const LEAP_VECTOR& thumbTip, const LEAP_VECTOR& fingerTip)
+{
+    const auto vecLength = [](const LEAP_VECTOR& v)
+    {
+        return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+    };
+
+    LEAP_VECTOR tipDistance = {thumbTip.x - fingerTip.x, thumbTip.y - fingerTip.y, thumbTip.z - fingerTip.z};
+    return vecLength(tipDistance);
 }
 
 //==============================================================================

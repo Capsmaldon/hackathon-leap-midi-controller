@@ -65,9 +65,23 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessor)
 
     //==============================================================================
+    struct FingerPinches
+    {
+        bool pinky = false;
+        bool ring = false;
+        bool middle = false;
+        bool index = false;
+    };
+
     void leapHandEvent(std::vector<LEAP_HAND> hands);
+    void processHand(const LEAP_HAND& hand);
+    float calculatePinch(const LEAP_VECTOR& thumbTip, const LEAP_VECTOR& fingerTip);
+
     LeapTracker leapTracker;
     std::unique_ptr<juce::MidiOutput> midiOutput;
+    std::array<FingerPinches, 2> previousPinches;
+    const float triggerThreshold = 0.8f;
+    const float releaseThreshold = 0.6f;
 
     juce::AudioParameterFloat *left_hand_x;
     juce::AudioParameterFloat *left_hand_y;
