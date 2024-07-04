@@ -317,7 +317,7 @@ void AudioPluginAudioProcessor::setStateInformation(const void *data, int sizeIn
 void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands)
 {
     interactionState.updateHandState(hands);
-
+    
     switch (pluginMode)
     {
         case PluginMode::PINCH_EXPRESSION:
@@ -476,7 +476,7 @@ void AudioPluginAudioProcessor::pinchExpressionMode(eLeapHandType chirality)
 
     // Handle palm X Y and Z.
     const auto palmCCs =
-            chirality == eLeapHandType_Left ? std::array<int, 3>{0, 74, 75} : std::array<int, 3>{37, 38, 39};
+            chirality == eLeapHandType_Left ? std::array<int, 3>{1, 71, 74} : std::array<int, 3>{1, 71, 74};
 
     // Get invLerps of palm positions.
 //    const auto palmPos = std::array<float, 3>{
@@ -497,7 +497,7 @@ void AudioPluginAudioProcessor::pinchExpressionMode(eLeapHandType chirality)
         {
             int value = distanceFromPinch[i] * 127;
             value = std::clamp(value, 0, 127);
-            auto msg = juce::MidiMessage::controllerEvent(1, palmCCs[i], value);
+            auto msg = juce::MidiMessage::controllerEvent(chirality + 1, palmCCs[i], value);
             if (midiOutput)
             {
                 midiOutput->sendMessageNow(msg);
@@ -595,12 +595,12 @@ void AudioPluginAudioProcessor::pinchExpressionMode(eLeapHandType chirality)
     {
         if (chirality == eLeapHandType_Left)
         {
-            noteEvent(handState.index.isPinching, notes[3]);
+           // noteEvent(handState.index.isPinching, notes[3]);
             left_hand_index->setValueNotifyingHost(handState.index.isPinching ? 1 : 0);
         }
         else
         {
-            noteEvent(handState.index.isPinching, notes[4]);
+            //noteEvent(handState.index.isPinching, notes[4]);
             right_hand_index->setValueNotifyingHost(handState.index.isPinching ? 1 : 0);
         }
     }
