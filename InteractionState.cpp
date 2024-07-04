@@ -2,38 +2,49 @@
 
 #include <cmath>
 
-void InteractionState::updateHandState(const LEAP_HAND &hand) {
-    auto& handState = hand.type == eLeapHandType_Left ? handStates[0] : handStates[1];
+void InteractionState::updateHandState(const std::vector<LEAP_HAND>& hands) {
+    // First do a check on the collection for if it has a left and or right hand to clear state if one currently isn't tracked.
+    if (!hasHand(hands, eLeapHandType_Left)) {
+        clearHandState(handStates[0]);
+    }
+
+    if (!hasHand(hands, eLeapHandType_Right)) {
+        clearHandState(handStates[1]);
+    }
+
+    for (const auto &hand: hands) {
+        auto &handState = hand.type == eLeapHandType_Left ? handStates[0] : handStates[1];
 
 
-    // Firstly update palm position
-    handState.palmPosition = hand.palm.position;
+        // Firstly update palm position
+        handState.palmPosition = hand.palm.position;
 
-    // Next look through each finger, calculate pinch and if state has changed, update accordingly.
-    const auto& thumbTip = hand.thumb.distal.next_joint;
-    const auto CalculateFinger = [&](FingerState &fingerState, const LEAP_VECTOR &fingerTip) {
-        // First update changed state and whether the finger is pinching or not.
-        fingerState.hasChanged = pinchStateChanged(fingerState.isPinching, calculatePinch(thumbTip, fingerTip));
+        // Next look through each finger, calculate pinch and if state has changed, update accordingly.
+        const auto &thumbTip = hand.thumb.distal.next_joint;
+        const auto CalculateFinger = [&](FingerState &fingerState, const LEAP_VECTOR &fingerTip) {
+            // First update changed state and whether the finger is pinching or not.
+            fingerState.hasChanged = pinchStateChanged(fingerState.isPinching, calculatePinch(thumbTip, fingerTip));
 
-        // If state has changed and its pinching then we need to set our origin of the palm position.
-        if (fingerState.hasChanged && fingerState.isPinching) {
-            fingerState.palmStartOfPinch = hand.palm.position;
-            fingerState.pinchPosDelta = LEAP_VECTOR{};
-        }
+            // If state has changed and its pinching then we need to set our origin of the palm position.
+            if (fingerState.hasChanged && fingerState.isPinching) {
+                fingerState.palmStartOfPinch = hand.palm.position;
+                fingerState.pinchPosDelta = LEAP_VECTOR{};
+            }
 
-        // If the state hasn't changed, and we're still pinching then update the delta.
-        if (!fingerState.hasChanged && fingerState.isPinching) {
-            fingerState.pinchPosDelta = {handState.palmPosition.x - fingerState.palmStartOfPinch.x,
-                                         handState.palmPosition.y - fingerState.palmStartOfPinch.y,
-                                         handState.palmPosition.z - fingerState.palmStartOfPinch.z};
-        }
-    };
+            // If the state hasn't changed, and we're still pinching then update the delta.
+            if (!fingerState.hasChanged && fingerState.isPinching) {
+                fingerState.pinchPosDelta = {handState.palmPosition.x - fingerState.palmStartOfPinch.x,
+                                             handState.palmPosition.y - fingerState.palmStartOfPinch.y,
+                                             handState.palmPosition.z - fingerState.palmStartOfPinch.z};
+            }
+        };
 
-    // Calculate all the fingers states;
-    CalculateFinger(handState.pinky, hand.pinky.distal.next_joint);
-    CalculateFinger(handState.ring, hand.ring.distal.next_joint);
-    CalculateFinger(handState.middle, hand.middle.distal.next_joint);
-    CalculateFinger(handState.index, hand.index.distal.next_joint);
+        // Calculate all the fingers states;
+        CalculateFinger(handState.pinky, hand.pinky.distal.next_joint);
+        CalculateFinger(handState.ring, hand.ring.distal.next_joint);
+        CalculateFinger(handState.middle, hand.middle.distal.next_joint);
+        CalculateFinger(handState.index, hand.index.distal.next_joint);
+    }
 }
 
 InteractionState::HandState InteractionState::getHandState(eLeapHandType chirality) {
@@ -65,4 +76,26 @@ bool InteractionState::pinchStateChanged(bool &currentPinchState, float pinchVal
         return true;
     }
     return false;
+}
+
+bool InteractionState::hasHand(const std::vector<LEAP_HAND> &hands, eLeapHandType chirality) {
+    for (const auto& hand : hands) {
+        if (hand.type == chirality) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void InteractionState::clearHandState(InteractionState::HandState &state) {
+    state.palmPosition = LEAP_VECTOR{};
+    state.pinky.hasChanged = true;
+    state.pinky.isPinching = false;
+    state.ring.hasChanged = true;
+    state.ring.isPinching = false;
+    state.middle.hasChanged = true;
+    state.middle.isPinching = false;
+    state.index.hasChanged = true;
+    state.index.isPinching = false;
 }

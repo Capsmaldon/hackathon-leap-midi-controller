@@ -300,15 +300,13 @@ void AudioPluginAudioProcessor::setStateInformation(const void *data, int sizeIn
 //==============================================================================
 void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands)
 {
-    for (const auto &hand : hands)
-    {
-        interactionState.updateHandState(hand);
+    interactionState.updateHandState(hands);
 
-        switch (pluginMode)
+    switch (pluginMode)
         case PluiginMode::PINCH_SYNTH:
         default:
-            pinchSynthMode(hand.type);
-    }
+            pinchSynthMode(eLeapHandType_Left);
+            pinchSynthMode(eLeapHandType_Right);
 }
 
 void AudioPluginAudioProcessor::pinchSynthMode(eLeapHandType chirality)

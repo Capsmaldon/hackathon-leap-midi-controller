@@ -1,4 +1,5 @@
 #include <array>
+#include <vector>
 
 #include <LeapC.h>
 
@@ -34,12 +35,14 @@ public:
     ~InteractionState() = default;
 
 
-    void updateHandState(const LEAP_HAND& hand);
+    void updateHandState(const std::vector<LEAP_HAND>& hands);
     HandState getHandState(eLeapHandType chirality);
 
 private:
     static float calculatePinch(const LEAP_VECTOR &thumbTip, const LEAP_VECTOR &fingerTip);
     static bool pinchStateChanged(bool& currentPinchState, float pinchValue);
+    static bool hasHand(const std::vector<LEAP_HAND>& hands, eLeapHandType chirality);
+    static void clearHandState(HandState& state);
 
     std::array<HandState, 2> handStates;
 };
