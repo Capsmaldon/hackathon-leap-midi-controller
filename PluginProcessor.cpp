@@ -302,11 +302,14 @@ void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands)
 {
     for (const auto &hand : hands)
     {
-        processHand(hand);
+        switch (pluginMode)
+        case PluiginMode::PINCH_SYNTH:
+        default:
+            pinchSynthMode(hand);
     }
 }
 
-void AudioPluginAudioProcessor::processHand(const LEAP_HAND &hand)
+void AudioPluginAudioProcessor::pinchSynthMode(const LEAP_HAND &hand)
 {
     // Handle palm X Y and Z.
     const auto palmCCs =

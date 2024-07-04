@@ -84,8 +84,15 @@ private:
         bool index = false;
     };
 
+    enum class PluiginMode
+    {
+        PINCH_SYNTH,
+    };
+
+    PluiginMode pluginMode = PluiginMode::PINCH_SYNTH;
+
     void leapHandEvent(std::vector<LEAP_HAND> hands);
-    void processHand(const LEAP_HAND &hand);
+    void pinchSynthMode(const LEAP_HAND &hand);
     float calculatePinch(const LEAP_VECTOR &thumbTip, const LEAP_VECTOR &fingerTip);
 
     static const auto invLerp(float lower, float upper, float value)
