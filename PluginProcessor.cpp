@@ -19,7 +19,11 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 #endif
 
     synth.addSound(new TestSynthSound());
-    synth.addVoice(new TestSynthVoice());
+    for (int i = 0; i < 8; ++i)
+    {
+        synth.addVoice(new TestSynthVoice());
+    }
+
     last_sent_palm_position = std::chrono::steady_clock::now();
 
     addParameter(left_hand_x = new juce::AudioParameterFloat("left_hand_x", // parameterID
@@ -256,7 +260,7 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     }
     else
     {
-        juce::ScopedLock sl (internalMidiBufferMutex);
+        juce::ScopedLock sl(internalMidiBufferMutex);
         internalMidiBuffer.addEvents(midiMessages, 0, -1, 0);
         synth.renderNextBlock(buffer, internalMidiBuffer, 0, buffer.getNumSamples());
         internalMidiBuffer.clear();
@@ -316,10 +320,18 @@ void AudioPluginAudioProcessor::pinchSynthMode(const LEAP_HAND &hand)
         hand.type == eLeapHandType_Left ? std::array<int, 3>{34, 35, 36} : std::array<int, 3>{37, 38, 39};
 
     // Get invLerps of palm positions.
-    const auto palmPos = std::array<float, 3>{
-        invLerp(-200.f, 200.f, hand.palm.position.x),
+
+    const auto palmPos_left = std::array<float, 3>{
+        invLerp(-300.f, 0.f, hand.palm.position.x),
         invLerp(100.f, 300.f, hand.palm.position.y),
         invLerp(-200.f, 200.f, hand.palm.position.z)};
+
+    const auto palmPos_right = std::array<float, 3>{
+        invLerp(0.f, 300.f, hand.palm.position.x),
+        invLerp(100.f, 300.f, hand.palm.position.y),
+        invLerp(-200.f, 200.f, hand.palm.position.z)};
+
+    const auto &palmPos = hand.type == eLeapHandType_Left ? palmPos_left : palmPos_right;
 
     auto now = std::chrono::steady_clock::now();
     if ((now - last_sent_palm_position) > std::chrono::milliseconds(50))
@@ -336,7 +348,7 @@ void AudioPluginAudioProcessor::pinchSynthMode(const LEAP_HAND &hand)
             }
             else
             {
-                juce::ScopedLock sl (internalMidiBufferMutex);
+                juce::ScopedLock sl(internalMidiBufferMutex);
                 internalMidiBuffer.addEvent(msg, 0);
             }
         }
@@ -407,66 +419,114 @@ void AudioPluginAudioProcessor::pinchSynthMode(const LEAP_HAND &hand)
         }
         else
         {
-            juce::ScopedLock sl (internalMidiBufferMutex);
+            juce::ScopedLock sl(internalMidiBufferMutex);
             internalMidiBuffer.addEvent(msg, 0);
         }
     };
 
-    int notes[8]{60, 62, 64, 67, 72, 74, 76, 79};
+    int major[7]{0, 2, 4, 5, 7, 9, 11};
+    int offset = 52;
+    int left_hand_notes[8]{
+        offset + major[2],
+        offset + major[3],
+        offset + major[4],
+        offset + major[5],
+        offset + major[6],
+        offset + major[0] + 12,
+        offset + major[1] + 12};
+    offset = 64;
+    int right_hand_notes[8]{
+        offset + major[2],
+        offset + major[3],
+        offset + major[4],
+        offset + major[5],
+        offset + major[6],
+        offset + major[0] + 12,
+        offset + major[1] + 12};
+    bool finger_states[8]{previousPinches[0].pinky,
+                          previousPinches[0].ring,
+                          previousPinches[0].middle,
+                          previousPinches[0].index,
+                          previousPinches[1].index,
+                          previousPinches[1].middle,
+                          previousPinches[1].ring,
+                          previousPinches[1].pinky};
+    juce::AudioParameterInt *finger_params[8]{left_hand_pinky,
+                                              left_hand_ring,
+                                              left_hand_middle,
+                                              left_hand_index,
+                                              right_hand_index,
+                                              right_hand_middle,
+                                              right_hand_ring,
+                                              right_hand_pinky};
+    bool left_hand = hand.type == eLeapHandType_Left;
+    bool finger_state_changes[8]{left_hand && pinkyChanged,
+                                 left_hand && ringChanged,
+                                 left_hand && middleChanged,
+                                 left_hand && indexChanged,
+                                 !left_hand && indexChanged,
+                                 !left_hand && middleChanged,
+                                 !left_hand && ringChanged,
+                                 !left_hand && pinkyChanged};
 
-    if (pinkyChanged)
+    int note_index_shift = static_cast<int>(std::clamp(palmPos[1], 0.0f, 1.0f) + 0.5f) * 3;
+
+    // Left hand - pinky finger priority
+    int left_playing_finger_index = -1;
+    for (int i = 0; i < 4; ++i)
     {
-        if (hand.type == eLeapHandType_Left)
+        if (finger_states[i])
         {
-            noteEvent(fingerPinches.pinky, notes[0]);
-            left_hand_pinky->setValueNotifyingHost(fingerPinches.pinky ? 1 : 0);
-        }
-        else
-        {
-            noteEvent(fingerPinches.pinky, notes[7]);
-            right_hand_pinky->setValueNotifyingHost(fingerPinches.pinky ? 1 : 0);
+            left_playing_finger_index = i;
+            break;
         }
     }
 
-    if (ringChanged)
+    for (int i = 0; i < 4; ++i)
     {
-        if (hand.type == eLeapHandType_Left)
+        if (finger_state_changes[i])
         {
-            noteEvent(fingerPinches.ring, notes[1]);
-            left_hand_ring->setValueNotifyingHost(fingerPinches.ring ? 1 : 0);
-        }
-        else
-        {
-            noteEvent(fingerPinches.ring, notes[6]);
-            right_hand_ring->setValueNotifyingHost(fingerPinches.ring ? 1 : 0);
+            if (last_left_playing_finger.first != -1)
+            {
+                noteEvent(false, last_left_playing_finger.second);
+                finger_params[last_left_playing_finger.first]->setValueNotifyingHost(0);
+            }
+
+            int note_num = left_hand_notes[i + note_index_shift];
+            noteEvent(finger_states[i], note_num);
+            std::cout << note_num << std::endl;
+            finger_params[i]->setValueNotifyingHost(finger_states[i] ? 1 : 0);
+            last_left_playing_finger = {left_playing_finger_index, left_hand_notes[i + note_index_shift]};
+            break;
         }
     }
 
-    if (middleChanged)
+    // Right hand - pinky finger priority
+    int right_playing_finger_index = -1;
+    for (int i = 7; i >= 4; --i)
     {
-        if (hand.type == eLeapHandType_Left)
+        if (finger_states[i])
         {
-            noteEvent(fingerPinches.middle, notes[2]);
-            left_hand_middle->setValueNotifyingHost(fingerPinches.middle ? 1 : 0);
-        }
-        else
-        {
-            noteEvent(fingerPinches.middle, notes[5]);
-            right_hand_middle->setValueNotifyingHost(fingerPinches.middle ? 1 : 0);
+            right_playing_finger_index = i;
+            break;
         }
     }
 
-    if (indexChanged)
+    for (int i = 7; i >= 4; --i)
     {
-        if (hand.type == eLeapHandType_Left)
+        if (finger_state_changes[i])
         {
-            noteEvent(fingerPinches.index, notes[3]);
-            left_hand_index->setValueNotifyingHost(fingerPinches.index ? 1 : 0);
-        }
-        else
-        {
-            noteEvent(fingerPinches.index, notes[4]);
-            right_hand_index->setValueNotifyingHost(fingerPinches.index ? 1 : 0);
+            if (last_right_playing_finger.first != -1)
+            {
+                noteEvent(false, last_right_playing_finger.second);
+                finger_params[last_right_playing_finger.first]->setValueNotifyingHost(0);
+            }
+            int note_num = right_hand_notes[(i - 4) + note_index_shift];
+            std::cout << note_num << std::endl;
+            noteEvent(finger_states[i], note_num);
+            finger_params[i]->setValueNotifyingHost(finger_states[i] ? 1 : 0);
+            last_right_playing_finger = {right_playing_finger_index, right_hand_notes[(i - 4) + note_index_shift]};
+            break;
         }
     }
 }

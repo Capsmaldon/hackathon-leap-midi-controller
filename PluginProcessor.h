@@ -93,6 +93,7 @@ private:
 
     void leapHandEvent(std::vector<LEAP_HAND> hands);
     void pinchSynthMode(const LEAP_HAND &hand);
+    void pinchSynthGridMode(const LEAP_HAND &hand);
     float calculatePinch(const LEAP_VECTOR &thumbTip, const LEAP_VECTOR &fingerTip);
 
     static const auto invLerp(float lower, float upper, float value)
@@ -106,7 +107,10 @@ private:
     std::unique_ptr<juce::MidiOutput> midiOutput;
     std::array<FingerPinches, 2> previousPinches;
     const float triggerThreshold = 0.8f;
-    const float releaseThreshold = 0.6f;
+    const float releaseThreshold = 0.7f;
+
+    std::pair<int, int> last_left_playing_finger = {-1, -1};
+    std::pair<int, int> last_right_playing_finger = {-1, -1};
 
     juce::AudioParameterFloat *left_hand_x;
     juce::AudioParameterFloat *left_hand_y;
