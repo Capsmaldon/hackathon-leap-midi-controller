@@ -1,11 +1,12 @@
 #include <array>
 #include <vector>
+#include <algorithm>
 
 #include <LeapC.h>
 
 static float inverseLerp(float lower, float upper, float value)
 {
-    return (value - lower) / (upper - lower);
+    return std::clamp((value - lower) / (upper - lower), 0.0f, 1.0f);;
 };
 
 class InteractionState {

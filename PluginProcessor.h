@@ -80,18 +80,23 @@ private:
     enum class PluiginMode
     {
         PINCH_SYNTH,
+        ODE_TO_JOY,
     };
 
-    PluiginMode pluginMode = PluiginMode::PINCH_SYNTH;
+    PluiginMode pluginMode = PluiginMode::ODE_TO_JOY;
 
     void leapHandEvent(std::vector<LEAP_HAND> hands);
     void pinchSynthMode(eLeapHandType chirality);
+    void odeToJoyMode(eLeapHandType chirality);
 
     std::chrono::steady_clock::time_point last_sent_palm_position;
 
     LeapTracker leapTracker;
     InteractionState interactionState;
     std::unique_ptr<juce::MidiOutput> midiOutput;
+
+    std::pair<int, int> last_left_playing_finger = {-1, -1};
+    std::pair<int, int> last_right_playing_finger = {-1, -1};
 
     juce::AudioParameterFloat *left_hand_x;
     juce::AudioParameterFloat *left_hand_y;

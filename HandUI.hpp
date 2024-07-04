@@ -53,7 +53,7 @@ public:
         float radius = 5.0f;
         juce::Rectangle<float> r(radius, radius);
         float x = std::clamp(x_, 0.0f, 1.0f);
-        float y = std::clamp(y_, 0.0f, 1.0f);
+        float y = 1.0f - std::clamp(y_, 0.0f, 1.0f);
         r.setCentre(x * getLocalBounds().getWidth(), y * getLocalBounds().getHeight());
         g.setColour(juce::Colour::fromRGB(255, 255, 255));
         g.drawEllipse(r, 2.0f);

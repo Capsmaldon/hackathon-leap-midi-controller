@@ -256,7 +256,7 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     }
     else
     {
-        juce::ScopedLock sl (internalMidiBufferMutex);
+        juce::ScopedLock sl(internalMidiBufferMutex);
         internalMidiBuffer.addEvents(midiMessages, 0, -1, 0);
         synth.renderNextBlock(buffer, internalMidiBuffer, 0, buffer.getNumSamples());
         internalMidiBuffer.clear();
@@ -303,10 +303,20 @@ void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands)
     interactionState.updateHandState(hands);
 
     switch (pluginMode)
-        case PluiginMode::PINCH_SYNTH:
-        default:
-            pinchSynthMode(eLeapHandType_Left);
-            pinchSynthMode(eLeapHandType_Right);
+    {
+    case PluiginMode::ODE_TO_JOY:
+        odeToJoyMode(eLeapHandType_Left);
+        odeToJoyMode(eLeapHandType_Right);
+        break;
+    case PluiginMode::PINCH_SYNTH:
+        pinchSynthMode(eLeapHandType_Left);
+        pinchSynthMode(eLeapHandType_Right);
+        break;
+    default:
+        pinchSynthMode(eLeapHandType_Left);
+        pinchSynthMode(eLeapHandType_Right);
+        break;
+    }
 }
 
 void AudioPluginAudioProcessor::pinchSynthMode(eLeapHandType chirality)
@@ -316,7 +326,7 @@ void AudioPluginAudioProcessor::pinchSynthMode(eLeapHandType chirality)
 
     // Handle palm X Y and Z.
     const auto palmCCs =
-            chirality == eLeapHandType_Left ? std::array<int, 3>{34, 35, 36} : std::array<int, 3>{37, 38, 39};
+        chirality == eLeapHandType_Left ? std::array<int, 3>{34, 35, 36} : std::array<int, 3>{37, 38, 39};
 
     // Get invLerps of palm positions.
     const auto palmPos = std::array<float, 3>{
@@ -339,7 +349,7 @@ void AudioPluginAudioProcessor::pinchSynthMode(eLeapHandType chirality)
             }
             else
             {
-                juce::ScopedLock sl (internalMidiBufferMutex);
+                juce::ScopedLock sl(internalMidiBufferMutex);
                 internalMidiBuffer.addEvent(msg, 0);
             }
         }
@@ -377,7 +387,7 @@ void AudioPluginAudioProcessor::pinchSynthMode(eLeapHandType chirality)
         }
         else
         {
-            juce::ScopedLock sl (internalMidiBufferMutex);
+            juce::ScopedLock sl(internalMidiBufferMutex);
             internalMidiBuffer.addEvent(msg, 0);
         }
     };
@@ -437,6 +447,192 @@ void AudioPluginAudioProcessor::pinchSynthMode(eLeapHandType chirality)
         {
             noteEvent(handState.index.isPinching, notes[4]);
             right_hand_index->setValueNotifyingHost(handState.index.isPinching ? 1 : 0);
+        }
+    }
+}
+
+void AudioPluginAudioProcessor::odeToJoyMode(eLeapHandType chirality)
+{
+    const auto handState = interactionState.getHandState(chirality);
+    const auto leftHandState = interactionState.getHandState(eLeapHandType_Left);
+    const auto rightHandState = interactionState.getHandState(eLeapHandType_Right);
+    // Handle palm X Y and Z.
+    const auto palmCCs =
+        chirality == eLeapHandType_Left ? std::array<int, 3>{34, 35, 36} : std::array<int, 3>{37, 38, 39};
+
+    // Get invLerps of palm positions.
+
+    const auto palmPos_left = std::array<float, 3>{
+        inverseLerp(-300.f, 0.f, handState.palmPosition.x),
+        inverseLerp(100.f, 300.f, handState.palmPosition.y),
+        inverseLerp(-200.f, 200.f, handState.palmPosition.z)};
+
+    const auto palmPos_right = std::array<float, 3>{
+        inverseLerp(0.f, 300.f, handState.palmPosition.x),
+        inverseLerp(100.f, 300.f, handState.palmPosition.y),
+        inverseLerp(-200.f, 200.f, handState.palmPosition.z)};
+
+    const auto &palmPos = chirality == eLeapHandType_Left ? palmPos_left : palmPos_right;
+
+    auto now = std::chrono::steady_clock::now();
+    if ((now - last_sent_palm_position) > std::chrono::milliseconds(50))
+    {
+        last_sent_palm_position = now;
+        for (const auto i : {0, 1, 2})
+        {
+            int value = palmPos[i] * 127;
+            value = std::clamp(value, 0, 127);
+            auto msg = juce::MidiMessage::controllerEvent(1, palmCCs[i], value);
+            if (midiOutput)
+            {
+                midiOutput->sendMessageNow(msg);
+            }
+            else
+            {
+                juce::ScopedLock sl(internalMidiBufferMutex);
+                internalMidiBuffer.addEvent(msg, 0);
+            }
+        }
+    }
+
+    // Update the UI to show the palm representation.
+    if (chirality == eLeapHandType_Left)
+    {
+        left_hand_x->setValueNotifyingHost(std::clamp(palmPos[0], 0.0f, 1.0f));
+        left_hand_y->setValueNotifyingHost(std::clamp(palmPos[1], 0.0f, 1.0f));
+        left_hand_z->setValueNotifyingHost(std::clamp(palmPos[2], 0.0f, 1.0f));
+    }
+    else
+    {
+        right_hand_x->setValueNotifyingHost(std::clamp(palmPos[0], 0.0f, 1.0f));
+        right_hand_y->setValueNotifyingHost(std::clamp(palmPos[1], 0.0f, 1.0f));
+        right_hand_z->setValueNotifyingHost(std::clamp(palmPos[2], 0.0f, 1.0f));
+    }
+
+    const auto noteEvent = [&](const auto &state, int noteNumber)
+    {
+        auto msg = juce::MidiMessage{};
+        if (state)
+        {
+            msg = juce::MidiMessage::noteOn(1, noteNumber, 1.0f);
+        }
+        else
+        {
+            msg = juce::MidiMessage::noteOff(1, noteNumber, 1.0f);
+        }
+
+        if (midiOutput)
+        {
+            midiOutput->sendMessageNow(msg);
+        }
+        else
+        {
+            juce::ScopedLock sl(internalMidiBufferMutex);
+            internalMidiBuffer.addEvent(msg, 0);
+        }
+    };
+
+    int major[7]{0, 2, 4, 5, 7, 9, 11};
+    int offset = 52;
+    int left_hand_notes[8]{
+        offset + major[2],
+        offset + major[3],
+        offset + major[4],
+        offset + major[5],
+        offset + major[6],
+        offset + major[0] + 12,
+        offset + major[1] + 12};
+    offset = 64;
+    int right_hand_notes[8]{
+        offset + major[2],
+        offset + major[3],
+        offset + major[4],
+        offset + major[5],
+        offset + major[6],
+        offset + major[0] + 12,
+        offset + major[1] + 12};
+    bool finger_states[8]{leftHandState.pinky.isPinching,
+                          leftHandState.ring.isPinching,
+                          leftHandState.middle.isPinching,
+                          leftHandState.index.isPinching,
+                          rightHandState.index.isPinching,
+                          rightHandState.middle.isPinching,
+                          rightHandState.ring.isPinching,
+                          rightHandState.pinky.isPinching};
+    juce::AudioParameterInt *finger_params[8]{left_hand_pinky,
+                                              left_hand_ring,
+                                              left_hand_middle,
+                                              left_hand_index,
+                                              right_hand_index,
+                                              right_hand_middle,
+                                              right_hand_ring,
+                                              right_hand_pinky};
+    bool left_hand = chirality == eLeapHandType_Left;
+    bool finger_state_changes[8]{left_hand && leftHandState.pinky.hasChanged,
+                                 left_hand && leftHandState.ring.hasChanged,
+                                 left_hand && leftHandState.middle.hasChanged,
+                                 left_hand && leftHandState.index.hasChanged,
+                                 !left_hand && rightHandState.index.hasChanged,
+                                 !left_hand && rightHandState.middle.hasChanged,
+                                 !left_hand && rightHandState.ring.hasChanged,
+                                 !left_hand && rightHandState.pinky.hasChanged};
+
+    int note_index_shift = static_cast<int>(std::clamp(palmPos[1], 0.0f, 1.0f) + 0.5f) * 3;
+
+    // Left hand - pinky finger priority
+    int left_playing_finger_index = -1;
+    for (int i = 0; i < 4; ++i)
+    {
+        if (finger_states[i])
+        {
+            left_playing_finger_index = i;
+            break;
+        }
+    }
+
+    for (int i = 0; i < 4; ++i)
+    {
+        if (finger_state_changes[i])
+        {
+            if (last_left_playing_finger.first != -1)
+            {
+                noteEvent(false, last_left_playing_finger.second);
+                finger_params[last_left_playing_finger.first]->setValueNotifyingHost(0);
+            }
+
+            int note_num = left_hand_notes[i + note_index_shift];
+            noteEvent(finger_states[i], note_num);
+            finger_params[i]->setValueNotifyingHost(finger_states[i] ? 1 : 0);
+            last_left_playing_finger = {left_playing_finger_index, left_hand_notes[i + note_index_shift]};
+            break;
+        }
+    }
+
+    // Right hand - pinky finger priority
+    int right_playing_finger_index = -1;
+    for (int i = 7; i >= 4; --i)
+    {
+        if (finger_states[i])
+        {
+            right_playing_finger_index = i;
+            break;
+        }
+    }
+
+    for (int i = 7; i >= 4; --i)
+    {
+        if (finger_state_changes[i])
+        {
+            if (last_right_playing_finger.first != -1)
+            {
+                noteEvent(false, last_right_playing_finger.second);
+                finger_params[last_right_playing_finger.first]->setValueNotifyingHost(0);
+            }
+            int note_num = right_hand_notes[(i - 4) + note_index_shift];
+            noteEvent(finger_states[i], note_num);
+            finger_params[i]->setValueNotifyingHost(finger_states[i] ? 1 : 0);
+            last_right_playing_finger = {right_playing_finger_index, right_hand_notes[(i - 4) + note_index_shift]};
+            break;
         }
     }
 }
