@@ -1,5 +1,7 @@
 #include "LeapTracker.h"
 
+#include <vector>
+
 LeapTracker::LeapTracker(std::function<void(std::vector<LEAP_HAND>)> handEvents) : callback{std::move(handEvents)}
 {
     LEAP_CONNECTION_CONFIG config{
