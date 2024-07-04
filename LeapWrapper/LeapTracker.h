@@ -3,6 +3,7 @@
 #include <atomic>
 #include <mutex>
 #include <thread>
+#include <vector>
 #include <shared_mutex>
 #include <functional>
 
