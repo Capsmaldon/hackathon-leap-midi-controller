@@ -302,24 +302,29 @@ void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands)
 {
     for (const auto &hand : hands)
     {
+        interactionState.updateHandState(hand);
+
         switch (pluginMode)
         case PluiginMode::PINCH_SYNTH:
         default:
-            pinchSynthMode(hand);
+            pinchSynthMode(hand.type);
     }
 }
 
-void AudioPluginAudioProcessor::pinchSynthMode(const LEAP_HAND &hand)
+void AudioPluginAudioProcessor::pinchSynthMode(eLeapHandType chirality)
 {
+    // Grab the latest update of the hand state.
+    const auto handState = interactionState.getHandState(chirality);
+
     // Handle palm X Y and Z.
     const auto palmCCs =
-        hand.type == eLeapHandType_Left ? std::array<int, 3>{34, 35, 36} : std::array<int, 3>{37, 38, 39};
+            chirality == eLeapHandType_Left ? std::array<int, 3>{34, 35, 36} : std::array<int, 3>{37, 38, 39};
 
     // Get invLerps of palm positions.
     const auto palmPos = std::array<float, 3>{
-        invLerp(-200.f, 200.f, hand.palm.position.x),
-        invLerp(100.f, 300.f, hand.palm.position.y),
-        invLerp(-200.f, 200.f, hand.palm.position.z)};
+        inverseLerp(-200.f, 200.f, handState.palmPosition.x),
+        inverseLerp(100.f, 300.f, handState.palmPosition.y),
+        inverseLerp(-200.f, 200.f, handState.palmPosition.z)};
 
     auto now = std::chrono::steady_clock::now();
     if ((now - last_sent_palm_position) > std::chrono::milliseconds(50))
@@ -343,7 +348,7 @@ void AudioPluginAudioProcessor::pinchSynthMode(const LEAP_HAND &hand)
     }
 
     // Update the UI to show the palm representation.
-    if (hand.type == eLeapHandType_Left)
+    if (chirality == eLeapHandType_Left)
     {
         left_hand_x->setValueNotifyingHost(std::clamp(palmPos[0], 0.0f, 1.0f));
         left_hand_y->setValueNotifyingHost(std::clamp(palmPos[1], 0.0f, 1.0f));
@@ -355,39 +360,6 @@ void AudioPluginAudioProcessor::pinchSynthMode(const LEAP_HAND &hand)
         right_hand_y->setValueNotifyingHost(std::clamp(palmPos[1], 0.0f, 1.0f));
         right_hand_z->setValueNotifyingHost(std::clamp(palmPos[2], 0.0f, 1.0f));
     }
-
-    // Individual finger pinch calcs
-    const auto PinchStateChanged = [&](bool &state, float value)
-    {
-        auto currentState = state;
-
-        if (!currentState && value > triggerThreshold)
-        {
-            state = true;
-            return true;
-        }
-        else if (currentState && value < releaseThreshold)
-        {
-            state = false;
-            return true;
-        }
-
-        return false;
-    };
-
-    auto &fingerPinches = hand.type == eLeapHandType_Left ? previousPinches[0] : previousPinches[1];
-    const auto pinkyChanged = PinchStateChanged(
-        fingerPinches.pinky,
-        calculatePinch(hand.thumb.distal.next_joint, hand.pinky.distal.next_joint));
-    const auto ringChanged = PinchStateChanged(
-        fingerPinches.ring,
-        calculatePinch(hand.thumb.distal.next_joint, hand.ring.distal.next_joint));
-    const auto middleChanged = PinchStateChanged(
-        fingerPinches.middle,
-        calculatePinch(hand.thumb.distal.next_joint, hand.middle.distal.next_joint));
-    const auto indexChanged = PinchStateChanged(
-        fingerPinches.index,
-        calculatePinch(hand.thumb.distal.next_joint, hand.index.distal.next_joint));
 
     const auto noteEvent = [&](const auto &state, int noteNumber)
     {
@@ -414,75 +386,61 @@ void AudioPluginAudioProcessor::pinchSynthMode(const LEAP_HAND &hand)
 
     int notes[8]{60, 62, 64, 67, 72, 74, 76, 79};
 
-    if (pinkyChanged)
+    if (handState.pinky.hasChanged)
     {
-        if (hand.type == eLeapHandType_Left)
+        if (chirality == eLeapHandType_Left)
         {
-            noteEvent(fingerPinches.pinky, notes[0]);
-            left_hand_pinky->setValueNotifyingHost(fingerPinches.pinky ? 1 : 0);
+            noteEvent(handState.pinky.isPinching, notes[0]);
+            left_hand_pinky->setValueNotifyingHost(handState.pinky.isPinching ? 1 : 0);
         }
         else
         {
-            noteEvent(fingerPinches.pinky, notes[7]);
-            right_hand_pinky->setValueNotifyingHost(fingerPinches.pinky ? 1 : 0);
+            noteEvent(handState.pinky.isPinching, notes[7]);
+            right_hand_pinky->setValueNotifyingHost(handState.pinky.isPinching ? 1 : 0);
         }
     }
 
-    if (ringChanged)
+    if (handState.ring.hasChanged)
     {
-        if (hand.type == eLeapHandType_Left)
+        if (chirality == eLeapHandType_Left)
         {
-            noteEvent(fingerPinches.ring, notes[1]);
-            left_hand_ring->setValueNotifyingHost(fingerPinches.ring ? 1 : 0);
+            noteEvent(handState.ring.isPinching, notes[1]);
+            left_hand_ring->setValueNotifyingHost(handState.ring.isPinching ? 1 : 0);
         }
         else
         {
-            noteEvent(fingerPinches.ring, notes[6]);
-            right_hand_ring->setValueNotifyingHost(fingerPinches.ring ? 1 : 0);
+            noteEvent(handState.ring.isPinching, notes[6]);
+            right_hand_ring->setValueNotifyingHost(handState.ring.isPinching ? 1 : 0);
         }
     }
 
-    if (middleChanged)
+    if (handState.middle.hasChanged)
     {
-        if (hand.type == eLeapHandType_Left)
+        if (chirality == eLeapHandType_Left)
         {
-            noteEvent(fingerPinches.middle, notes[2]);
-            left_hand_middle->setValueNotifyingHost(fingerPinches.middle ? 1 : 0);
+            noteEvent(handState.middle.isPinching, notes[2]);
+            left_hand_middle->setValueNotifyingHost(handState.middle.isPinching ? 1 : 0);
         }
         else
         {
-            noteEvent(fingerPinches.middle, notes[5]);
-            right_hand_middle->setValueNotifyingHost(fingerPinches.middle ? 1 : 0);
+            noteEvent(handState.middle.isPinching, notes[5]);
+            right_hand_middle->setValueNotifyingHost(handState.middle.isPinching ? 1 : 0);
         }
     }
 
-    if (indexChanged)
+    if (handState.index.hasChanged)
     {
-        if (hand.type == eLeapHandType_Left)
+        if (chirality == eLeapHandType_Left)
         {
-            noteEvent(fingerPinches.index, notes[3]);
-            left_hand_index->setValueNotifyingHost(fingerPinches.index ? 1 : 0);
+            noteEvent(handState.index.isPinching, notes[3]);
+            left_hand_index->setValueNotifyingHost(handState.index.isPinching ? 1 : 0);
         }
         else
         {
-            noteEvent(fingerPinches.index, notes[4]);
-            right_hand_index->setValueNotifyingHost(fingerPinches.index ? 1 : 0);
+            noteEvent(handState.index.isPinching, notes[4]);
+            right_hand_index->setValueNotifyingHost(handState.index.isPinching ? 1 : 0);
         }
     }
-}
-
-float AudioPluginAudioProcessor::calculatePinch(const LEAP_VECTOR &thumbTip, const LEAP_VECTOR &fingerTip)
-{
-    const auto vecLength = [](const LEAP_VECTOR &v)
-    {
-        return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
-    };
-
-    static constexpr auto fullPinch = 15.0f;    // 15mms dist is considered a full pinch.
-    static constexpr auto fullRelease = 100.0f; // 100mms dist between fingers is considered a full release
-
-    LEAP_VECTOR distVec = {thumbTip.x - fingerTip.x, thumbTip.y - fingerTip.y, thumbTip.z - fingerTip.z};
-    return invLerp(fullRelease, fullPinch, vecLength(distVec));
 }
 
 //==============================================================================

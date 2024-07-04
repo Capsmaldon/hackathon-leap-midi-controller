@@ -52,6 +52,8 @@ target_sources(
     TestSynthVoice.cpp
     TestSynthVoice.h
     TestSynthSound.h
+    InteractionState.cpp
+    InteractionState.h
 )
 
 target_compile_definitions(AudioPluginExample

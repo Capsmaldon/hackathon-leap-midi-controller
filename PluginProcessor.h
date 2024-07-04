@@ -3,6 +3,7 @@
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "LeapWrapper/LeapTracker.h"
+#include "InteractionState.h"
 #include <juce_dsp/juce_dsp.h>
 #include <juce_core/juce_core.h>
 
@@ -76,14 +77,6 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessor)
 
     //==============================================================================
-    struct FingerPinches
-    {
-        bool pinky = false;
-        bool ring = false;
-        bool middle = false;
-        bool index = false;
-    };
-
     enum class PluiginMode
     {
         PINCH_SYNTH,
@@ -92,21 +85,13 @@ private:
     PluiginMode pluginMode = PluiginMode::PINCH_SYNTH;
 
     void leapHandEvent(std::vector<LEAP_HAND> hands);
-    void pinchSynthMode(const LEAP_HAND &hand);
-    float calculatePinch(const LEAP_VECTOR &thumbTip, const LEAP_VECTOR &fingerTip);
-
-    static const auto invLerp(float lower, float upper, float value)
-    {
-        return (value - lower) / (upper - lower);
-    };
+    void pinchSynthMode(eLeapHandType chirality);
 
     std::chrono::steady_clock::time_point last_sent_palm_position;
 
     LeapTracker leapTracker;
+    InteractionState interactionState;
     std::unique_ptr<juce::MidiOutput> midiOutput;
-    std::array<FingerPinches, 2> previousPinches;
-    const float triggerThreshold = 0.8f;
-    const float releaseThreshold = 0.6f;
 
     juce::AudioParameterFloat *left_hand_x;
     juce::AudioParameterFloat *left_hand_y;
