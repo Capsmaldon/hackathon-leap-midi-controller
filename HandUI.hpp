@@ -126,9 +126,28 @@ public:
         note_table.toggle_note(index, value);
     }
 
+    void set_cc_number_x(int num)
+    {
+        cc_x_slider.setValue(num);
+    }
+
+    void set_cc_number_y(int num)
+    {
+        cc_y_slider.setValue(num);
+    }
+
+    void set_cc_number_z(int num)
+    {
+        cc_z_slider.setValue(num);
+    }
+
 private:
     juce::Label label;
     XYPad xy_pad;
     juce::Slider z_slider;
     NoteTable note_table;
+
+    juce::Slider cc_x_slider;
+    juce::Slider cc_y_slider;
+    juce::Slider cc_z_slider;
 };

@@ -101,6 +101,22 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                                                                 0,
                                                                 1,
                                                                 0));
+
+    addParameter(left_hand_cc_x = new juce::AudioParameterInt("left_hand_cc_x", // parameterID
+                                                                "Left Hand CC X", // parameter name
+                                                                0,
+                                                                127,
+                                                                0));
+    addParameter(left_hand_cc_y = new juce::AudioParameterInt("left_hand_cc_y", // parameterID
+                                                              "Left Hand CC Y", // parameter name
+                                                              0,
+                                                              127,
+                                                              0));
+    addParameter(left_hand_cc_z = new juce::AudioParameterInt("left_hand_cc_z", // parameterID
+                                                              "Left Hand CC Z", // parameter name
+                                                              0,
+                                                              127,
+                                                              0));
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -303,10 +319,21 @@ void AudioPluginAudioProcessor::leapHandEvent(std::vector<LEAP_HAND> hands)
     interactionState.updateHandState(hands);
 
     switch (pluginMode)
-        case PluiginMode::PINCH_SYNTH:
+    {
+        case PluginMode::PINCH_EXPRESSION:
+        {
+            pinchExpressionMode(eLeapHandType_Left);
+            pinchExpressionMode(eLeapHandType_Right);
+            break;
+        }
+        case PluginMode::PINCH_SYNTH:
         default:
+        {
             pinchSynthMode(eLeapHandType_Left);
             pinchSynthMode(eLeapHandType_Right);
+            break;
+        }
+    };
 }
 
 void AudioPluginAudioProcessor::pinchSynthMode(eLeapHandType chirality)
@@ -440,6 +467,146 @@ void AudioPluginAudioProcessor::pinchSynthMode(eLeapHandType chirality)
         }
     }
 }
+
+
+void AudioPluginAudioProcessor::pinchExpressionMode(eLeapHandType chirality)
+{
+    // Grab the latest update of the hand state.
+    const auto handState = interactionState.getHandState(chirality);
+
+    // Handle palm X Y and Z.
+    const auto palmCCs =
+            chirality == eLeapHandType_Left ? std::array<int, 3>{0, 74, 75} : std::array<int, 3>{37, 38, 39};
+
+    // Get invLerps of palm positions.
+//    const auto palmPos = std::array<float, 3>{
+//            inverseLerp(-200.f, 200.f, handState.palmPosition.x),
+//            inverseLerp(100.f, 300.f, handState.palmPosition.y),
+//            inverseLerp(-200.f, 200.f, handState.palmPosition.z)};
+
+    const auto distanceFromPinch = std::array<float, 3>{
+            inverseLerp(0, 200.f, fabs(handState.index.pinchPosDelta.x)),
+            inverseLerp(0, 300.f, fabs(handState.index.pinchPosDelta.z)),
+            inverseLerp(0, 200.f, fabs(handState.index.pinchPosDelta.y))};
+
+    auto now = std::chrono::steady_clock::now();
+    if ((now - last_sent_palm_position) > std::chrono::milliseconds(50) && handState.index.isPinching)
+    {
+        last_sent_palm_position = now;
+        for (const auto i : {0, 1, 2})
+        {
+            int value = distanceFromPinch[i] * 127;
+            value = std::clamp(value, 0, 127);
+            auto msg = juce::MidiMessage::controllerEvent(1, palmCCs[i], value);
+            if (midiOutput)
+            {
+                midiOutput->sendMessageNow(msg);
+            }
+            else
+            {
+                juce::ScopedLock sl (internalMidiBufferMutex);
+                internalMidiBuffer.addEvent(msg, 0);
+            }
+        }
+    }
+
+    // Update the UI to show the palm representation.
+    if (chirality == eLeapHandType_Left)
+    {
+        left_hand_x->setValueNotifyingHost(std::clamp(distanceFromPinch[0], 0.0f, 1.0f));
+        left_hand_y->setValueNotifyingHost(std::clamp(distanceFromPinch[1], 0.0f, 1.0f));
+        left_hand_z->setValueNotifyingHost(std::clamp(distanceFromPinch[2], 0.0f, 1.0f));
+    }
+    else
+    {
+        right_hand_x->setValueNotifyingHost(std::clamp(distanceFromPinch[0], 0.0f, 1.0f));
+        right_hand_y->setValueNotifyingHost(std::clamp(distanceFromPinch[1], 0.0f, 1.0f));
+        right_hand_z->setValueNotifyingHost(std::clamp(distanceFromPinch[2], 0.0f, 1.0f));
+    }
+
+    const auto noteEvent = [&](const auto &state, int noteNumber)
+    {
+        auto msg = juce::MidiMessage{};
+        if (state)
+        {
+            msg = juce::MidiMessage::noteOn(1, noteNumber, 1.0f);
+        }
+        else
+        {
+            msg = juce::MidiMessage::noteOff(1, noteNumber, 1.0f);
+        }
+
+        if (midiOutput)
+        {
+            midiOutput->sendMessageNow(msg);
+        }
+        else
+        {
+            juce::ScopedLock sl (internalMidiBufferMutex);
+            internalMidiBuffer.addEvent(msg, 0);
+        }
+    };
+
+    int notes[8]{60, 62, 64, 67, 72, 74, 76, 79};
+
+//    if (handState.pinky.hasChanged)
+//    {
+//        if (chirality == eLeapHandType_Left)
+//        {
+//            noteEvent(handState.pinky.isPinching, notes[0]);
+//            left_hand_pinky->setValueNotifyingHost(handState.pinky.isPinching ? 1 : 0);
+//        }
+//        else
+//        {
+//            noteEvent(handState.pinky.isPinching, notes[7]);
+//            right_hand_pinky->setValueNotifyingHost(handState.pinky.isPinching ? 1 : 0);
+//        }
+//    }
+//
+//    if (handState.ring.hasChanged)
+//    {
+//        if (chirality == eLeapHandType_Left)
+//        {
+//            noteEvent(handState.ring.isPinching, notes[1]);
+//            left_hand_ring->setValueNotifyingHost(handState.ring.isPinching ? 1 : 0);
+//        }
+//        else
+//        {
+//            noteEvent(handState.ring.isPinching, notes[6]);
+//            right_hand_ring->setValueNotifyingHost(handState.ring.isPinching ? 1 : 0);
+//        }
+//    }
+//
+//    if (handState.middle.hasChanged)
+//    {
+//        if (chirality == eLeapHandType_Left)
+//        {
+//            noteEvent(handState.middle.isPinching, notes[2]);
+//            left_hand_middle->setValueNotifyingHost(handState.middle.isPinching ? 1 : 0);
+//        }
+//        else
+//        {
+//            noteEvent(handState.middle.isPinching, notes[5]);
+//            right_hand_middle->setValueNotifyingHost(handState.middle.isPinching ? 1 : 0);
+//        }
+//    }
+//
+    if (handState.index.hasChanged)
+    {
+        if (chirality == eLeapHandType_Left)
+        {
+            noteEvent(handState.index.isPinching, notes[3]);
+            left_hand_index->setValueNotifyingHost(handState.index.isPinching ? 1 : 0);
+        }
+        else
+        {
+            noteEvent(handState.index.isPinching, notes[4]);
+            right_hand_index->setValueNotifyingHost(handState.index.isPinching ? 1 : 0);
+        }
+    }
+}
+
+
 
 //==============================================================================
 // This creates new instances of the plugin..

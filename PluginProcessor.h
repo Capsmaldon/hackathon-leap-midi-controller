@@ -22,7 +22,13 @@ enum PluginParams
     PARAM_RIGHT_HAND_INDEX,
     PARAM_RIGHT_HAND_MIDDLE,
     PARAM_RIGHT_HAND_RING,
-    PARAM_RIGHT_HAND_PINKY
+    PARAM_RIGHT_HAND_PINKY,
+    PARAM_LEFT_HAND_CC_X,
+    PARAM_LEFT_HAND_CC_Y,
+    PARAM_LEFT_HAND_CC_Z,
+    PARAM_RIGHT_HAND_CC_X,
+    PARAM_RIGHT_HAND_CC_Y,
+    PARAM_RIGHT_HAND_CC_Z,
 };
 
 //==============================================================================
@@ -77,15 +83,17 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessor)
 
     //==============================================================================
-    enum class PluiginMode
+    enum class PluginMode
     {
         PINCH_SYNTH,
+        PINCH_EXPRESSION,
     };
 
-    PluiginMode pluginMode = PluiginMode::PINCH_SYNTH;
+    PluginMode pluginMode = PluginMode::PINCH_EXPRESSION;
 
     void leapHandEvent(std::vector<LEAP_HAND> hands);
     void pinchSynthMode(eLeapHandType chirality);
+    void pinchExpressionMode(eLeapHandType chirality);
 
     std::chrono::steady_clock::time_point last_sent_palm_position;
 
@@ -110,6 +118,14 @@ private:
     juce::AudioParameterInt *right_hand_ring;
     juce::AudioParameterInt *right_hand_middle;
     juce::AudioParameterInt *right_hand_index;
+
+    juce::AudioParameterInt *left_hand_cc_x;
+    juce::AudioParameterInt *left_hand_cc_y;
+    juce::AudioParameterInt *left_hand_cc_z;
+
+    juce::AudioParameterInt *right_hand_cc_x;
+    juce::AudioParameterInt *right_hand_cc_y;
+    juce::AudioParameterInt *right_hand_cc_z;
 
     //==============================================================================
 };
