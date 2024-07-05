@@ -95,7 +95,8 @@ private:
     void pinchSynthMode(eLeapHandType chirality);
     void pinchExpressionMode(eLeapHandType chirality);
 
-    std::chrono::steady_clock::time_point last_sent_palm_position;
+    std::chrono::steady_clock::time_point last_sent_left_palm_position;
+    std::chrono::steady_clock::time_point last_sent_right_palm_position;
 
     LeapTracker leapTracker;
     InteractionState interactionState;
