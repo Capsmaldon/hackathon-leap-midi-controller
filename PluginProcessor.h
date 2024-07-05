@@ -101,7 +101,8 @@ private:
         return (value - lower) / (upper - lower);
     };
 
-    std::chrono::steady_clock::time_point last_sent_palm_position;
+    std::chrono::steady_clock::time_point last_sent_left_palm_position;
+    std::chrono::steady_clock::time_point last_sent_right_palm_position;
 
     LeapTracker leapTracker;
     std::unique_ptr<juce::MidiOutput> midiOutput;

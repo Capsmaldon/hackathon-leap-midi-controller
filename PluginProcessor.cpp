@@ -24,7 +24,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
         synth.addVoice(new TestSynthVoice());
     }
 
-    last_sent_palm_position = std::chrono::steady_clock::now();
+    last_sent_left_palm_position = std::chrono::steady_clock::now();
+    last_sent_right_palm_position = std::chrono::steady_clock::now();
 
     addParameter(left_hand_x = new juce::AudioParameterFloat("left_hand_x", // parameterID
                                                              "Left Hand X", // parameter name
@@ -334,9 +335,18 @@ void AudioPluginAudioProcessor::pinchSynthMode(const LEAP_HAND &hand)
     const auto &palmPos = hand.type == eLeapHandType_Left ? palmPos_left : palmPos_right;
 
     auto now = std::chrono::steady_clock::now();
-    if ((now - last_sent_palm_position) > std::chrono::milliseconds(50))
+    bool send_left_hand = (now - last_sent_left_palm_position) > std::chrono::milliseconds(50);
+    bool send_right_hand = (now - last_sent_right_palm_position) > std::chrono::milliseconds(50);
+    if (((send_left_hand && hand.type == eLeapHandType_Left) || (send_right_hand && hand.type == eLeapHandType_Right)))
     {
-        last_sent_palm_position = now;
+        if (hand.type == eLeapHandType_Left)
+        {
+            last_sent_left_palm_position = now;
+        }
+        else
+        {
+            last_sent_right_palm_position = now;
+        }
         for (const auto i : {0, 1, 2})
         {
             int value = palmPos[i] * 127;
