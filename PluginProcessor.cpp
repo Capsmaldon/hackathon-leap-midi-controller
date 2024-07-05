@@ -20,7 +20,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 
     synth.addSound(new TestSynthSound());
     synth.addVoice(new TestSynthVoice());
-    last_sent_palm_position = std::chrono::steady_clock::now();
+    last_sent_left_palm_position = std::chrono::steady_clock::now();
+    last_sent_right_palm_position = std::chrono::steady_clock::now();
 
     addParameter(left_hand_x = new juce::AudioParameterFloat("left_hand_x", // parameterID
                                                              "Left Hand X", // parameter name
@@ -352,9 +353,18 @@ void AudioPluginAudioProcessor::pinchSynthMode(eLeapHandType chirality)
         inverseLerp(-200.f, 200.f, handState.palmPosition.z)};
 
     auto now = std::chrono::steady_clock::now();
-    if ((now - last_sent_palm_position) > std::chrono::milliseconds(50))
+    bool send_left_hand = (now - last_sent_left_palm_position) > std::chrono::milliseconds(50);
+    bool send_right_hand = (now - last_sent_right_palm_position) > std::chrono::milliseconds(50);
+    if (((send_left_hand && chirality == eLeapHandType_Left) || (send_right_hand && chirality == eLeapHandType_Right)) && handState.index.isPinching)
     {
-        last_sent_palm_position = now;
+        if(chirality == eLeapHandType_Left)
+        {
+            last_sent_left_palm_position = now;
+        }
+        else
+        {
+            last_sent_right_palm_position = now;
+        }
         for (const auto i : {0, 1, 2})
         {
             int value = palmPos[i] * 127;
@@ -490,14 +500,25 @@ void AudioPluginAudioProcessor::pinchExpressionMode(eLeapHandType chirality)
             inverseLerp(0, 200.f, fabs(handState.index.pinchPosDelta.y))};
 
     auto now = std::chrono::steady_clock::now();
-    if ((now - last_sent_palm_position) > std::chrono::milliseconds(50) && handState.index.isPinching)
+    bool send_left_hand = (now - last_sent_left_palm_position) > std::chrono::milliseconds(50);
+    bool send_right_hand = (now - last_sent_right_palm_position) > std::chrono::milliseconds(50);
+    if (((send_left_hand && chirality == eLeapHandType_Left) || (send_right_hand && chirality == eLeapHandType_Right)) && handState.index.isPinching)
     {
-        last_sent_palm_position = now;
+        if(chirality == eLeapHandType_Left)
+        {
+            last_sent_left_palm_position = now;
+        }
+        else
+        {
+            last_sent_right_palm_position = now;
+        }
+        
         for (const auto i : {0, 1, 2})
         {
             int value = distanceFromPinch[i] * 127;
             value = std::clamp(value, 0, 127);
             auto msg = juce::MidiMessage::controllerEvent(chirality + 1, palmCCs[i], value);
+            std::cout << "channel" << msg.getChannel() << std::endl;
             if (midiOutput)
             {
                 midiOutput->sendMessageNow(msg);
